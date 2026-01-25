@@ -1,0 +1,5 @@
+{
+  "name": "Stock Allocation Calculator",
+  "description": "A smart investment planning tool to visualize and distribute capital across multiple stocks with real-time calculations and dynamic charting.",
+  "requestFramePermissions": []
+}
