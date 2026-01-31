@@ -12,11 +12,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        /* Custom scrollbar & animations */
         ::-webkit-scrollbar { width: 0px; background: transparent; }
         .fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
         /* Remove arrows from number input */
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -32,7 +30,7 @@
             </div>
             <div>
                 <h1 class="text-xl font-bold text-white">Position Sizing</h1>
-                <p class="text-xs text-zinc-500">Risk Management Calculator</p>
+                <p class="text-xs text-zinc-500">Bi-directional Calc</p>
             </div>
         </div>
 
@@ -42,7 +40,7 @@
                 <label class="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Total Portfolio ($)</label>
                 <div class="relative">
                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500">$</span>
-                    <input type="number" id="portfolio" value="10000" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 pl-8 pr-4 text-lg font-bold text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder-zinc-700">
+                    <input type="number" id="portfolio" placeholder="10000" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 pl-8 pr-4 text-lg font-bold text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder-zinc-700">
                 </div>
             </div>
 
@@ -50,7 +48,7 @@
                 <div>
                     <label class="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Position Size (%)</label>
                     <div class="relative">
-                        <input type="number" id="positionPercent" value="30" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 px-4 text-lg font-bold text-indigo-400 focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder-zinc-700">
+                        <input type="number" id="positionPercent" placeholder="30" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 px-4 text-lg font-bold text-indigo-400 focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder-zinc-700">
                         <span class="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600">%</span>
                     </div>
                 </div>
@@ -58,7 +56,7 @@
                 <div>
                     <label class="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Portfolio Risk (%)</label>
                     <div class="relative">
-                        <input type="number" id="riskPercent" value="2" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 px-4 text-lg font-bold text-rose-400 focus:ring-2 focus:ring-rose-500/50 outline-none transition-all placeholder-zinc-700">
+                        <input type="number" id="riskPercent" placeholder="2" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 px-4 text-lg font-bold text-rose-400 focus:ring-2 focus:ring-rose-500/50 outline-none transition-all placeholder-zinc-700">
                         <span class="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600">%</span>
                     </div>
                 </div>
@@ -86,10 +84,15 @@
             </div>
 
             <div class="grid grid-cols-2 gap-3">
-                <div class="bg-zinc-900/50 rounded-xl border border-zinc-800 p-4">
-                    <p class="text-xs text-zinc-500 mb-1">Position Value (Cash)</p>
-                    <p class="text-xl font-bold text-white" id="resultCash">$0.00</p>
+                
+                <div class="bg-zinc-900/50 rounded-xl border border-zinc-800 p-4 relative focus-within:ring-2 focus-within:ring-indigo-500/50 transition-all">
+                    <label class="block text-xs text-zinc-500 mb-1">Position Value (Cash)</label>
+                    <div class="relative">
+                        <span class="absolute left-0 top-1/2 -translate-y-1/2 text-zinc-500 font-bold">$</span>
+                        <input type="number" id="positionCashInput" placeholder="0.00" class="w-full bg-transparent text-xl font-bold text-indigo-400 outline-none pl-4 placeholder-zinc-700">
+                    </div>
                 </div>
+
                 <div class="bg-zinc-900/50 rounded-xl border border-zinc-800 p-4">
                     <p class="text-xs text-zinc-500 mb-1">Risk Amount ($)</p>
                     <p class="text-xl font-bold text-rose-400" id="resultRisk">$0.00</p>
@@ -103,65 +106,114 @@
         lucide.createIcons();
 
         // Elements
-        const inputs = ['portfolio', 'positionPercent', 'riskPercent', 'entryPrice'];
-        const els = {};
-        inputs.forEach(id => els[id] = document.getElementById(id));
+        const elPortfolio = document.getElementById('portfolio');
+        const elPosPercent = document.getElementById('positionPercent');
+        const elRiskPercent = document.getElementById('riskPercent');
+        const elEntryPrice = document.getElementById('entryPrice');
+        
+        // This is the new editable input
+        const elPosCashInput = document.getElementById('positionCashInput');
         
         const resSLPercent = document.getElementById('resultSLPercent');
-        const resCash = document.getElementById('resultCash');
         const resRisk = document.getElementById('resultRisk');
         const resSLPriceLabel = document.getElementById('resultSLPriceLabel');
 
-        // Formatter
         const moneyFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
-        function calculate() {
-            // Get values
-            const portfolio = parseFloat(els.portfolio.value) || 0;
-            const posPercent = parseFloat(els.positionPercent.value) || 0;
-            const riskPercent = parseFloat(els.riskPercent.value) || 0;
-            const entryPrice = parseFloat(els.entryPrice.value) || 0;
+        // --- LOAD & SAVE ---
+        function loadData() {
+            const saved = localStorage.getItem('risk_calc_v2_data');
+            if (saved) {
+                const data = JSON.parse(saved);
+                if(data.portfolio) elPortfolio.value = data.portfolio;
+                if(data.riskPercent) elRiskPercent.value = data.riskPercent;
+                if(data.posPercent) elPosPercent.value = data.posPercent;
+                if(data.entryPrice) elEntryPrice.value = data.entryPrice;
+                // Init calcs
+                calculate('percent'); 
+            } else {
+                elPortfolio.value = 10000;
+                elRiskPercent.value = 2;
+                elPosPercent.value = 30;
+                calculate('percent');
+            }
+        }
 
-            // 1. Calculate Dollar Amounts
-            const positionCash = portfolio * (posPercent / 100);
-            const riskAmount = portfolio * (riskPercent / 100);
+        function saveData() {
+            const data = {
+                portfolio: elPortfolio.value,
+                riskPercent: elRiskPercent.value,
+                posPercent: elPosPercent.value,
+                entryPrice: elEntryPrice.value
+            };
+            localStorage.setItem('risk_calc_v2_data', JSON.stringify(data));
+        }
 
-            // 2. Calculate Stop Loss Percent
-            // Formula: (Risk $ / Position $) * 100
-            let slPercent = 0;
-            if (positionCash > 0) {
-                slPercent = (riskAmount / positionCash) * 100;
+        // --- CORE LOGIC ---
+        function calculate(source) {
+            const portfolio = parseFloat(elPortfolio.value) || 0;
+            const riskPercent = parseFloat(elRiskPercent.value) || 0;
+            const entryPrice = parseFloat(elEntryPrice.value) || 0;
+
+            let posPercent = parseFloat(elPosPercent.value) || 0;
+            let posCash = parseFloat(elPosCashInput.value) || 0;
+
+            // 1. Determine who updates whom
+            if (source === 'percent' || source === 'portfolio') {
+                // If % changed, update Cash
+                posCash = portfolio * (posPercent / 100);
+                elPosCashInput.value = posCash.toFixed(2); // Update bottom input
+            } else if (source === 'cash') {
+                // If Cash changed, update %
+                if (portfolio > 0) {
+                    posPercent = (posCash / portfolio) * 100;
+                    elPosPercent.value = posPercent.toFixed(2); // Update top input
+                }
             }
 
-            // 3. Calculate Stop Loss Price (if Entry Price exists)
+            // 2. Risk Calculation (Fixed based on portfolio size usually, but let's base it on portfolio)
+            const riskAmount = portfolio * (riskPercent / 100);
+            
+            // 3. Stop Loss % Calculation (Risk $ / Position $)
+            let slPercent = 0;
+            if (posCash > 0) {
+                slPercent = (riskAmount / posCash) * 100;
+            }
+
+            // 4. SL Price Logic
             let slPriceText = "Enter entry price to see SL level";
             if (entryPrice > 0 && slPercent > 0) {
-                // Long position assumption: SL is below entry
                 const slPrice = entryPrice * (1 - (slPercent / 100));
                 slPriceText = `Stop Loss Price: <span class="text-rose-400 font-bold">${slPrice.toFixed(2)}</span>`;
             }
 
-            // Update UI
-            resCash.innerText = moneyFmt.format(positionCash);
-            resRisk.innerText = moneyFmt.format(riskAmount); // Fixed variable name here
+            // 5. Update UI Results
+            resRisk.innerText = moneyFmt.format(riskAmount);
             
-            // Format SL % (Handle Infinity or NaN)
             if (slPercent === Infinity || isNaN(slPercent)) {
                 resSLPercent.innerText = "0.00%";
             } else {
                 resSLPercent.innerText = slPercent.toFixed(2) + "%";
             }
-            
             resSLPriceLabel.innerHTML = slPriceText;
+
+            // Only save if we are not rapidly typing (optional, but simple here)
+            saveData();
         }
 
-        // Add Event Listeners to auto-calculate
-        inputs.forEach(id => {
-            els[id].addEventListener('input', calculate);
-        });
+        // --- EVENTS ---
+        
+        // 1. Top Inputs
+        elPortfolio.addEventListener('input', () => calculate('portfolio'));
+        elRiskPercent.addEventListener('input', () => calculate('percent')); // Re-calc results only
+        elEntryPrice.addEventListener('input', () => calculate('percent'));
+        
+        // 2. The Bi-directional Link
+        elPosPercent.addEventListener('input', () => calculate('percent')); // Changing % updates $
+        elPosCashInput.addEventListener('input', () => calculate('cash'));   // Changing $ updates %
 
         // Init
-        calculate();
+        loadData();
 
     </script>
 </body>
