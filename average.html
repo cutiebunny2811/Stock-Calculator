@@ -43,6 +43,7 @@
         </div>
 
         <div id="view-dca" class="space-y-4">
+            
             <div class="bg-gradient-to-br from-zinc-900 to-zinc-900/50 rounded-2xl border border-zinc-800 p-5 shadow-xl relative overflow-hidden">
                 <div class="absolute right-0 top-0 p-4 opacity-5">
                     <i data-lucide="trending-up" class="w-24 h-24 text-white"></i>
@@ -67,19 +68,29 @@
 
             <div class="space-y-3">
                 <div class="flex justify-between items-center px-1">
-                    <span class="text-sm font-bold text-zinc-400">Buy Entries</span>
+                    <div class="flex items-center gap-2 bg-zinc-900 p-1 rounded-lg border border-zinc-800">
+                        <button onclick="setMode('qty')" id="mode-qty" class="text-[10px] px-3 py-1 rounded-md font-bold transition-all bg-zinc-700 text-white">By Qty</button>
+                        <button onclick="setMode('cash')" id="mode-cash" class="text-[10px] px-3 py-1 rounded-md font-bold transition-all text-zinc-500 hover:text-white">By Cash</button>
+                    </div>
                     <button onclick="addEntry()" class="text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-lg border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors flex items-center gap-1">
                         <i data-lucide="plus" class="w-3 h-3"></i> Add Row
                     </button>
                 </div>
+
+                <div class="grid grid-cols-12 gap-2 px-3 text-[10px] uppercase text-zinc-500 font-bold tracking-wider">
+                    <div class="col-span-1 text-center">#</div>
+                    <div class="col-span-4">Price</div>
+                    <div class="col-span-4" id="col-header-input">Qty</div>
+                    <div class="col-span-2 text-right" id="col-header-calc">Cost</div>
+                    <div class="col-span-1"></div>
+                </div>
                 
-                <div id="entries-list" class="space-y-2">
+                <div id="entries-list" class="space-y-2 pb-10">
                     </div>
             </div>
         </div>
 
         <div id="view-target" class="hidden space-y-6">
-            
             <div class="bg-zinc-900/80 rounded-2xl border border-zinc-800 p-6 space-y-5">
                 <h3 class="text-sm font-bold text-white border-b border-zinc-800 pb-2">Current Portfolio</h3>
                 <div class="grid grid-cols-2 gap-4">
@@ -111,7 +122,6 @@
                     Cost: <span id="tgt-result-cost" class="text-zinc-300 font-bold">0.00</span>
                 </div>
             </div>
-
         </div>
 
     </div>
@@ -122,71 +132,94 @@
         // --- STATE ---
         let state = {
             activeTab: 'dca',
+            dcaMode: 'qty', // 'qty' or 'cash'
             dcaEntries: [
-                { id: '1', price: '', qty: '' },
-                { id: '2', price: '', qty: '' }
+                { id: '1', price: '', val: '' }, // val can be qty OR cash depending on mode
+                { id: '2', price: '', val: '' }
             ],
-            target: {
-                currentPrice: '',
-                currentQty: '',
-                marketPrice: '',
-                targetPrice: ''
-            }
+            target: { currentPrice: '', currentQty: '', marketPrice: '', targetPrice: '' }
         };
 
         // --- LOAD / SAVE ---
         function loadData() {
-            const saved = localStorage.getItem('stock_avg_data');
+            const saved = localStorage.getItem('stock_avg_v2_data');
             if (saved) {
-                state = JSON.parse(saved);
+                const loaded = JSON.parse(saved);
+                // Merge loaded data cautiously
+                state.activeTab = loaded.activeTab || 'dca';
+                state.dcaMode = loaded.dcaMode || 'qty';
+                if(loaded.dcaEntries) state.dcaEntries = loaded.dcaEntries;
+                if(loaded.target) state.target = loaded.target;
+                
                 // Restore Target Inputs
                 document.getElementById('tgt-current-price').value = state.target.currentPrice;
                 document.getElementById('tgt-current-qty').value = state.target.currentQty;
                 document.getElementById('tgt-market-price').value = state.target.marketPrice;
                 document.getElementById('tgt-target-price').value = state.target.targetPrice;
             }
-            switchTab(state.activeTab, false); // Restore tab without saving again
-            renderDCA();
+            switchTab(state.activeTab, false);
+            setMode(state.dcaMode, false);
             calcTarget();
         }
 
         function saveData() {
-            localStorage.setItem('stock_avg_data', JSON.stringify(state));
+            localStorage.setItem('stock_avg_v2_data', JSON.stringify(state));
         }
 
-        // --- TABS ---
+        // --- TABS & MODES ---
         function switchTab(tab, save = true) {
             state.activeTab = tab;
-            
             const btnDca = document.getElementById('tab-dca');
             const btnTgt = document.getElementById('tab-target');
             const viewDca = document.getElementById('view-dca');
             const viewTgt = document.getElementById('view-target');
 
+            const activeClass = "flex-1 py-2 text-sm font-medium rounded-lg transition-all text-white bg-zinc-800 shadow-sm";
+            const inactiveClass = "flex-1 py-2 text-sm font-medium rounded-lg transition-all text-zinc-500 hover:text-zinc-300";
+
             if (tab === 'dca') {
-                btnDca.className = "flex-1 py-2 text-sm font-medium rounded-lg transition-all text-white bg-zinc-800 shadow-sm";
-                btnTgt.className = "flex-1 py-2 text-sm font-medium rounded-lg transition-all text-zinc-500 hover:text-zinc-300";
-                viewDca.classList.remove('hidden');
-                viewTgt.classList.add('hidden');
+                btnDca.className = activeClass; btnTgt.className = inactiveClass;
+                viewDca.classList.remove('hidden'); viewTgt.classList.add('hidden');
             } else {
-                btnTgt.className = "flex-1 py-2 text-sm font-medium rounded-lg transition-all text-white bg-zinc-800 shadow-sm";
-                btnDca.className = "flex-1 py-2 text-sm font-medium rounded-lg transition-all text-zinc-500 hover:text-zinc-300";
-                viewTgt.classList.remove('hidden');
-                viewDca.classList.add('hidden');
+                btnTgt.className = activeClass; btnDca.className = inactiveClass;
+                viewTgt.classList.remove('hidden'); viewDca.classList.add('hidden');
             }
+            if(save) saveData();
+        }
+
+        function setMode(mode, save = true) {
+            state.dcaMode = mode;
+            const btnQty = document.getElementById('mode-qty');
+            const btnCash = document.getElementById('mode-cash');
+            const colInput = document.getElementById('col-header-input');
+            const colCalc = document.getElementById('col-header-calc');
+
+            const activeBtn = "text-[10px] px-3 py-1 rounded-md font-bold transition-all bg-zinc-700 text-white shadow-sm";
+            const inactiveBtn = "text-[10px] px-3 py-1 rounded-md font-bold transition-all text-zinc-500 hover:text-white";
+
+            if (mode === 'qty') {
+                btnQty.className = activeBtn; btnCash.className = inactiveBtn;
+                colInput.innerText = "Quantity";
+                colCalc.innerText = "Cost";
+            } else {
+                btnCash.className = activeBtn; btnQty.className = inactiveBtn;
+                colInput.innerText = "Cash ($)";
+                colCalc.innerText = "Qty";
+            }
+            
+            renderDCA();
             if(save) saveData();
         }
 
         // --- DCA LOGIC ---
         function addEntry() {
-            const id = Math.random().toString(36).substr(2, 9);
-            state.dcaEntries.push({ id, price: '', qty: '' });
+            state.dcaEntries.push({ id: Math.random().toString(36).substr(2, 9), price: '', val: '' });
             renderDCA();
             saveData();
         }
 
         function removeEntry(id) {
-            if (state.dcaEntries.length <= 1) return; // Keep at least 1
+            if (state.dcaEntries.length <= 1) return; 
             state.dcaEntries = state.dcaEntries.filter(e => e.id !== id);
             renderDCA();
             saveData();
@@ -196,12 +229,15 @@
             const entry = state.dcaEntries.find(e => e.id === id);
             if (entry) {
                 entry[field] = val;
-                renderDCA(false); // No full re-render, just calc
+                renderDCA(false); 
                 saveData();
             }
         }
 
         function renderDCA(fullRender = true) {
+            const isQtyMode = state.dcaMode === 'qty';
+            const inputPlaceholder = isQtyMode ? "Qty" : "Cash Amt";
+
             if (fullRender) {
                 const list = document.getElementById('entries-list');
                 list.innerHTML = '';
@@ -213,10 +249,10 @@
                             <input type="number" value="${entry.price}" oninput="updateEntry('${entry.id}', 'price', this.value)" placeholder="Price" class="w-full bg-black/50 border border-zinc-800 rounded-lg px-2 py-1.5 text-white text-sm outline-none focus:border-emerald-500/50">
                         </div>
                         <div class="col-span-4">
-                            <input type="number" value="${entry.qty}" oninput="updateEntry('${entry.id}', 'qty', this.value)" placeholder="Qty" class="w-full bg-black/50 border border-zinc-800 rounded-lg px-2 py-1.5 text-white text-sm outline-none focus:border-emerald-500/50">
+                            <input type="number" value="${entry.val}" oninput="updateEntry('${entry.id}', 'val', this.value)" placeholder="${inputPlaceholder}" class="w-full bg-black/50 border border-zinc-800 rounded-lg px-2 py-1.5 text-white text-sm outline-none focus:border-emerald-500/50 ${!isQtyMode ? 'text-emerald-400 font-bold' : ''}">
                         </div>
                         <div class="col-span-2 text-right">
-                             <span class="text-[10px] text-zinc-500 block font-mono total-row-cost opacity-50">0.00</span>
+                             <span class="text-[10px] text-zinc-500 block font-mono total-row-calc opacity-50">-</span>
                         </div>
                         <div class="col-span-1 text-right">
                             <button onclick="removeEntry('${entry.id}')" class="text-zinc-600 hover:text-rose-500"><i data-lucide="x" width="14"></i></button>
@@ -228,32 +264,48 @@
             }
 
             // Calculation
-            let totalQty = 0;
-            let totalCost = 0;
+            let grandTotalQty = 0;
+            let grandTotalCost = 0;
+            const rowCalcs = document.querySelectorAll('.total-row-calc');
 
-            // Loop through state to calc totals
-            state.dcaEntries.forEach(e => {
-                const p = parseFloat(e.price) || 0;
-                const q = parseFloat(e.qty) || 0;
-                totalQty += q;
-                totalCost += (p * q);
-            });
-
-            // Update row totals visually (optional UI polish)
-            const rowCosts = document.querySelectorAll('.total-row-cost');
             state.dcaEntries.forEach((e, i) => {
-                if(rowCosts[i]) {
-                    const cost = (parseFloat(e.price) || 0) * (parseFloat(e.qty) || 0);
-                    rowCosts[i].innerText = cost > 0 ? formatNum(cost) : '-';
-                    rowCosts[i].style.opacity = cost > 0 ? '1' : '0.3';
+                const p = parseFloat(e.price) || 0;
+                const v = parseFloat(e.val) || 0;
+                
+                let rowQty = 0;
+                let rowCost = 0;
+
+                if (p > 0) {
+                    if (isQtyMode) {
+                        // val is Qty
+                        rowQty = v;
+                        rowCost = p * v;
+                    } else {
+                        // val is Cash
+                        rowCost = v;
+                        rowQty = v / p; // Calculate implied quantity
+                    }
+                }
+
+                grandTotalQty += rowQty;
+                grandTotalCost += rowCost;
+
+                // Update Row Display
+                if(rowCalcs[i]) {
+                    if (isQtyMode) {
+                        rowCalcs[i].innerText = formatNum(rowCost);
+                    } else {
+                        rowCalcs[i].innerText = rowQty > 0 ? rowQty.toFixed(4) : '-'; // Show 4 decimals for fractional shares
+                    }
+                    rowCalcs[i].style.opacity = (rowQty > 0 || rowCost > 0) ? '1' : '0.3';
                 }
             });
 
             // Update Summary
-            const avg = totalQty > 0 ? (totalCost / totalQty) : 0;
+            const avg = grandTotalQty > 0 ? (grandTotalCost / grandTotalQty) : 0;
             document.getElementById('dca-avg-price').innerText = formatNum(avg);
-            document.getElementById('dca-total-shares').innerText = totalQty.toLocaleString();
-            document.getElementById('dca-total-cost').innerText = formatNum(totalCost);
+            document.getElementById('dca-total-shares').innerText = grandTotalQty.toLocaleString(undefined, { maximumFractionDigits: 4 });
+            document.getElementById('dca-total-cost').innerText = formatNum(grandTotalCost);
         }
 
         // --- TARGET LOGIC ---
@@ -265,7 +317,7 @@
 
         ['tgt-current-price', 'tgt-current-qty', 'tgt-market-price', 'tgt-target-price'].forEach(id => {
             document.getElementById(id).addEventListener('input', (e) => {
-                const field = id.replace('tgt-', '').replace(/-([a-z])/g, (g) => g[1].toUpperCase()); // camelCase
+                const field = id.replace('tgt-', '').replace(/-([a-z])/g, (g) => g[1].toUpperCase());
                 updateTargetInput(field, e.target.value);
             });
         });
@@ -275,37 +327,20 @@
             const curQ = parseFloat(state.target.currentQty) || 0;
             const mktP = parseFloat(state.target.marketPrice) || 0;
             const tgtP = parseFloat(state.target.targetPrice) || 0;
-
             const card = document.getElementById('tgt-result-card');
             const resQty = document.getElementById('tgt-result-qty');
             const resCost = document.getElementById('tgt-result-cost');
 
-            // Logic: (CurCost + NewCost) / (CurQty + NewQty) = TgtPrice
-            // (CurP*CurQ + MktP*X) = TgtP*(CurQ + X)
-            // CurTotal + MktP*X = TgtP*CurQ + TgtP*X
-            // MktP*X - TgtP*X = TgtP*CurQ - CurTotal
-            // X(MktP - TgtP) = TgtP*CurQ - (CurP*CurQ)
-            // X = (TgtP*CurQ - CurP*CurQ) / (MktP - TgtP)
-            // X = CurQ * (TgtP - CurP) / (MktP - TgtP)
-            
-            // Note: If X is negative, it means impossible (e.g. buying higher to reduce avg).
-            
             if (curP > 0 && curQ > 0 && mktP > 0 && tgtP > 0) {
-                const numerator = curQ * (tgtP - curP);
                 const denominator = mktP - tgtP;
-                
                 let neededQty = 0;
-                
-                if (denominator !== 0) {
-                    neededQty = numerator / denominator;
-                }
+                if (denominator !== 0) neededQty = (curQ * (tgtP - curP)) / denominator;
 
                 if (neededQty > 0) {
                     card.className = "bg-emerald-900/20 rounded-2xl border border-emerald-500/50 p-6 text-center shadow-lg shadow-emerald-900/20";
                     resQty.innerHTML = `${Math.ceil(neededQty).toLocaleString()} <span class="text-sm font-normal text-emerald-300">shares</span>`;
                     resCost.innerText = formatNum(Math.ceil(neededQty) * mktP);
                 } else {
-                    // Impossible case
                     card.className = "bg-rose-900/20 rounded-2xl border border-rose-500/30 p-6 text-center";
                     resQty.innerHTML = `<span class="text-xl">Impossible</span>`;
                     resCost.innerText = "0.00";
