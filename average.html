@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stock Average</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AvgCalc">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 antialiased min-h-screen p-4 pb-20 selection:bg-emerald-500/30 font-sans">
+
+    <div class="max-w-md mx-auto space-y-6 fade-in">
+        
+        <div class="flex items-center gap-3">
+            <div class="bg-gradient-to-br from-emerald-500 to-teal-600 p-2.5 rounded-xl shadow-lg shadow-emerald-900/20">
+                <i data-lucide="calculator" class="text-white w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold text-white">Stock Average</h1>
+                <p class="text-xs text-zinc-500">DCA & Target Price Planner</p>
+            </div>
+        </div>
+
+        <div class="flex p-1 bg-zinc-900/80 rounded-xl border border-zinc-800">
+            <button onclick="switchTab('dca')" id="tab-dca" class="flex-1 py-2 text-sm font-medium rounded-lg transition-all text-white bg-zinc-800 shadow-sm">
+                Average (DCA)
+            </button>
+            <button onclick="switchTab('target')" id="tab-target" class="flex-1 py-2 text-sm font-medium rounded-lg transition-all text-zinc-500 hover:text-zinc-300">
+                Target Price
+            </button>
+        </div>
+
+        <div id="view-dca" class="space-y-4">
+            <div class="bg-gradient-to-br from-zinc-900 to-zinc-900/50 rounded-2xl border border-zinc-800 p-5 shadow-xl relative overflow-hidden">
+                <div class="absolute right-0 top-0 p-4 opacity-5">
+                    <i data-lucide="trending-up" class="w-24 h-24 text-white"></i>
+                </div>
+                
+                <div class="text-center space-y-1 mb-6">
+                    <p class="text-xs text-zinc-500 uppercase tracking-wider">New Average Price</p>
+                    <h2 id="dca-avg-price" class="text-4xl font-bold text-emerald-400">0.00</h2>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 border-t border-zinc-800 pt-4">
+                    <div>
+                        <p class="text-[10px] text-zinc-500 uppercase">Total Shares</p>
+                        <p id="dca-total-shares" class="text-lg font-semibold text-white">0</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] text-zinc-500 uppercase">Total Cost</p>
+                        <p id="dca-total-cost" class="text-lg font-semibold text-zinc-300">0.00</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <div class="flex justify-between items-center px-1">
+                    <span class="text-sm font-bold text-zinc-400">Buy Entries</span>
+                    <button onclick="addEntry()" class="text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-lg border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors flex items-center gap-1">
+                        <i data-lucide="plus" class="w-3 h-3"></i> Add Row
+                    </button>
+                </div>
+                
+                <div id="entries-list" class="space-y-2">
+                    </div>
+            </div>
+        </div>
+
+        <div id="view-target" class="hidden space-y-6">
+            
+            <div class="bg-zinc-900/80 rounded-2xl border border-zinc-800 p-6 space-y-5">
+                <h3 class="text-sm font-bold text-white border-b border-zinc-800 pb-2">Current Portfolio</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-zinc-500 mb-1">Avg Price</label>
+                        <input type="number" id="tgt-current-price" placeholder="10.00" class="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white font-bold outline-none focus:border-emerald-500/50">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-zinc-500 mb-1">Shares (Qty)</label>
+                        <input type="number" id="tgt-current-qty" placeholder="1000" class="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white font-bold outline-none focus:border-emerald-500/50">
+                    </div>
+                </div>
+
+                <h3 class="text-sm font-bold text-white border-b border-zinc-800 pb-2 pt-2">New Plan</h3>
+                <div>
+                    <label class="block text-xs text-zinc-500 mb-1">Market Price (To Buy)</label>
+                    <input type="number" id="tgt-market-price" placeholder="8.00" class="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white font-bold outline-none focus:border-emerald-500/50">
+                </div>
+                <div>
+                    <label class="block text-xs text-emerald-500 mb-1 font-bold">Desired Avg Price (Target)</label>
+                    <input type="number" id="tgt-target-price" placeholder="9.00" class="w-full bg-emerald-900/10 border border-emerald-500/30 rounded-xl p-3 text-emerald-400 font-bold outline-none focus:ring-1 focus:ring-emerald-500">
+                </div>
+            </div>
+
+            <div id="tgt-result-card" class="bg-zinc-800/50 rounded-2xl border border-zinc-700 p-6 text-center opacity-50">
+                <p class="text-sm text-zinc-400 mb-2">You need to buy</p>
+                <h2 id="tgt-result-qty" class="text-3xl font-black text-white">0 <span class="text-sm font-normal text-zinc-500">shares</span></h2>
+                <div class="mt-2 text-xs text-zinc-500 bg-black/30 py-2 px-4 rounded-lg inline-block">
+                    Cost: <span id="tgt-result-cost" class="text-zinc-300 font-bold">0.00</span>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // --- STATE ---
+        let state = {
+            activeTab: 'dca',
+            dcaEntries: [
+                { id: '1', price: '', qty: '' },
+                { id: '2', price: '', qty: '' }
+            ],
+            target: {
+                currentPrice: '',
+                currentQty: '',
+                marketPrice: '',
+                targetPrice: ''
+            }
+        };
+
+        // --- LOAD / SAVE ---
+        function loadData() {
+            const saved = localStorage.getItem('stock_avg_data');
+            if (saved) {
+                state = JSON.parse(saved);
+                // Restore Target Inputs
+                document.getElementById('tgt-current-price').value = state.target.currentPrice;
+                document.getElementById('tgt-current-qty').value = state.target.currentQty;
+                document.getElementById('tgt-market-price').value = state.target.marketPrice;
+                document.getElementById('tgt-target-price').value = state.target.targetPrice;
+            }
+            switchTab(state.activeTab, false); // Restore tab without saving again
+            renderDCA();
+            calcTarget();
+        }
+
+        function saveData() {
+            localStorage.setItem('stock_avg_data', JSON.stringify(state));
+        }
+
+        // --- TABS ---
+        function switchTab(tab, save = true) {
+            state.activeTab = tab;
+            
+            const btnDca = document.getElementById('tab-dca');
+            const btnTgt = document.getElementById('tab-target');
+            const viewDca = document.getElementById('view-dca');
+            const viewTgt = document.getElementById('view-target');
+
+            if (tab === 'dca') {
+                btnDca.className = "flex-1 py-2 text-sm font-medium rounded-lg transition-all text-white bg-zinc-800 shadow-sm";
+                btnTgt.className = "flex-1 py-2 text-sm font-medium rounded-lg transition-all text-zinc-500 hover:text-zinc-300";
+                viewDca.classList.remove('hidden');
+                viewTgt.classList.add('hidden');
+            } else {
+                btnTgt.className = "flex-1 py-2 text-sm font-medium rounded-lg transition-all text-white bg-zinc-800 shadow-sm";
+                btnDca.className = "flex-1 py-2 text-sm font-medium rounded-lg transition-all text-zinc-500 hover:text-zinc-300";
+                viewTgt.classList.remove('hidden');
+                viewDca.classList.add('hidden');
+            }
+            if(save) saveData();
+        }
+
+        // --- DCA LOGIC ---
+        function addEntry() {
+            const id = Math.random().toString(36).substr(2, 9);
+            state.dcaEntries.push({ id, price: '', qty: '' });
+            renderDCA();
+            saveData();
+        }
+
+        function removeEntry(id) {
+            if (state.dcaEntries.length <= 1) return; // Keep at least 1
+            state.dcaEntries = state.dcaEntries.filter(e => e.id !== id);
+            renderDCA();
+            saveData();
+        }
+
+        function updateEntry(id, field, val) {
+            const entry = state.dcaEntries.find(e => e.id === id);
+            if (entry) {
+                entry[field] = val;
+                renderDCA(false); // No full re-render, just calc
+                saveData();
+            }
+        }
+
+        function renderDCA(fullRender = true) {
+            if (fullRender) {
+                const list = document.getElementById('entries-list');
+                list.innerHTML = '';
+                state.dcaEntries.forEach((entry, index) => {
+                    const html = `
+                    <div class="grid grid-cols-12 gap-2 items-center bg-zinc-900 border border-zinc-800 p-3 rounded-xl">
+                        <div class="col-span-1 text-center text-xs text-zinc-600 font-bold">${index + 1}</div>
+                        <div class="col-span-4">
+                            <input type="number" value="${entry.price}" oninput="updateEntry('${entry.id}', 'price', this.value)" placeholder="Price" class="w-full bg-black/50 border border-zinc-800 rounded-lg px-2 py-1.5 text-white text-sm outline-none focus:border-emerald-500/50">
+                        </div>
+                        <div class="col-span-4">
+                            <input type="number" value="${entry.qty}" oninput="updateEntry('${entry.id}', 'qty', this.value)" placeholder="Qty" class="w-full bg-black/50 border border-zinc-800 rounded-lg px-2 py-1.5 text-white text-sm outline-none focus:border-emerald-500/50">
+                        </div>
+                        <div class="col-span-2 text-right">
+                             <span class="text-[10px] text-zinc-500 block font-mono total-row-cost opacity-50">0.00</span>
+                        </div>
+                        <div class="col-span-1 text-right">
+                            <button onclick="removeEntry('${entry.id}')" class="text-zinc-600 hover:text-rose-500"><i data-lucide="x" width="14"></i></button>
+                        </div>
+                    </div>`;
+                    list.insertAdjacentHTML('beforeend', html);
+                });
+                lucide.createIcons();
+            }
+
+            // Calculation
+            let totalQty = 0;
+            let totalCost = 0;
+
+            // Loop through state to calc totals
+            state.dcaEntries.forEach(e => {
+                const p = parseFloat(e.price) || 0;
+                const q = parseFloat(e.qty) || 0;
+                totalQty += q;
+                totalCost += (p * q);
+            });
+
+            // Update row totals visually (optional UI polish)
+            const rowCosts = document.querySelectorAll('.total-row-cost');
+            state.dcaEntries.forEach((e, i) => {
+                if(rowCosts[i]) {
+                    const cost = (parseFloat(e.price) || 0) * (parseFloat(e.qty) || 0);
+                    rowCosts[i].innerText = cost > 0 ? formatNum(cost) : '-';
+                    rowCosts[i].style.opacity = cost > 0 ? '1' : '0.3';
+                }
+            });
+
+            // Update Summary
+            const avg = totalQty > 0 ? (totalCost / totalQty) : 0;
+            document.getElementById('dca-avg-price').innerText = formatNum(avg);
+            document.getElementById('dca-total-shares').innerText = totalQty.toLocaleString();
+            document.getElementById('dca-total-cost').innerText = formatNum(totalCost);
+        }
+
+        // --- TARGET LOGIC ---
+        function updateTargetInput(field, val) {
+            state.target[field] = val;
+            calcTarget();
+            saveData();
+        }
+
+        ['tgt-current-price', 'tgt-current-qty', 'tgt-market-price', 'tgt-target-price'].forEach(id => {
+            document.getElementById(id).addEventListener('input', (e) => {
+                const field = id.replace('tgt-', '').replace(/-([a-z])/g, (g) => g[1].toUpperCase()); // camelCase
+                updateTargetInput(field, e.target.value);
+            });
+        });
+
+        function calcTarget() {
+            const curP = parseFloat(state.target.currentPrice) || 0;
+            const curQ = parseFloat(state.target.currentQty) || 0;
+            const mktP = parseFloat(state.target.marketPrice) || 0;
+            const tgtP = parseFloat(state.target.targetPrice) || 0;
+
+            const card = document.getElementById('tgt-result-card');
+            const resQty = document.getElementById('tgt-result-qty');
+            const resCost = document.getElementById('tgt-result-cost');
+
+            // Logic: (CurCost + NewCost) / (CurQty + NewQty) = TgtPrice
+            // (CurP*CurQ + MktP*X) = TgtP*(CurQ + X)
+            // CurTotal + MktP*X = TgtP*CurQ + TgtP*X
+            // MktP*X - TgtP*X = TgtP*CurQ - CurTotal
+            // X(MktP - TgtP) = TgtP*CurQ - (CurP*CurQ)
+            // X = (TgtP*CurQ - CurP*CurQ) / (MktP - TgtP)
+            // X = CurQ * (TgtP - CurP) / (MktP - TgtP)
+            
+            // Note: If X is negative, it means impossible (e.g. buying higher to reduce avg).
+            
+            if (curP > 0 && curQ > 0 && mktP > 0 && tgtP > 0) {
+                const numerator = curQ * (tgtP - curP);
+                const denominator = mktP - tgtP;
+                
+                let neededQty = 0;
+                
+                if (denominator !== 0) {
+                    neededQty = numerator / denominator;
+                }
+
+                if (neededQty > 0) {
+                    card.className = "bg-emerald-900/20 rounded-2xl border border-emerald-500/50 p-6 text-center shadow-lg shadow-emerald-900/20";
+                    resQty.innerHTML = `${Math.ceil(neededQty).toLocaleString()} <span class="text-sm font-normal text-emerald-300">shares</span>`;
+                    resCost.innerText = formatNum(Math.ceil(neededQty) * mktP);
+                } else {
+                    // Impossible case
+                    card.className = "bg-rose-900/20 rounded-2xl border border-rose-500/30 p-6 text-center";
+                    resQty.innerHTML = `<span class="text-xl">Impossible</span>`;
+                    resCost.innerText = "0.00";
+                }
+            } else {
+                 card.className = "bg-zinc-800/50 rounded-2xl border border-zinc-700 p-6 text-center opacity-50";
+                 resQty.innerHTML = `0 <span class="text-sm font-normal text-zinc-500">shares</span>`;
+                 resCost.innerText = "0.00";
+            }
+        }
+
+        function formatNum(n) {
+            return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        // Init
+        loadData();
+
+    </script>
+</body>
+</html>
