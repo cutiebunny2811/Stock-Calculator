@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>FX Tracker</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        input, select, button { outline: none; }
+        body { padding-bottom: env(safe-area-inset-bottom); }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 antialiased min-h-screen font-sans pb-20 selection:bg-blue-500/30">
+
+    <div class="max-w-xl mx-auto p-4 space-y-6 fade-in">
+        
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-gradient-to-tr from-blue-500 to-indigo-600 p-2.5 rounded-xl shadow-lg shadow-blue-900/20">
+                    <i data-lucide="banknote" class="text-white w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white tracking-tight">FX Tracker</h1>
+                    <p class="text-xs text-slate-400">USD/THB Management</p>
+                </div>
+            </div>
+            <button onclick="toggleSettings()" class="p-2 rounded-full hover:bg-slate-800 text-slate-400 transition-colors">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4 relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-2 opacity-10"><i data-lucide="globe" class="w-12 h-12"></i></div>
+                <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1">Market Rate (USDTHB)</p>
+                <div class="flex items-baseline gap-2">
+                    <h2 id="market-rate" class="text-3xl font-black text-white">0.00</h2>
+                    <span class="text-xs text-slate-500">฿/$</span>
+                </div>
+                <button onclick="fetchRate()" id="btn-refresh" class="absolute bottom-3 right-3 text-blue-500 hover:text-blue-400"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+            </div>
+
+            <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4 relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-2 opacity-10"><i data-lucide="wallet" class="w-12 h-12"></i></div>
+                <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1">My Avg Cost</p>
+                <div class="flex items-baseline gap-2">
+                    <h2 id="avg-cost" class="text-3xl font-black text-emerald-400">0.00</h2>
+                    <span class="text-xs text-slate-500">฿/$</span>
+                </div>
+                <p id="diff-pct" class="text-[10px] font-bold mt-1 text-slate-600">--%</p>
+            </div>
+        </div>
+
+        <div class="bg-slate-900/50 rounded-xl border border-slate-800 p-4 flex justify-between items-center text-sm">
+            <div>
+                <p class="text-slate-500 text-xs">Total USD Held</p>
+                <p id="total-usd" class="font-bold text-white text-lg">$0.00</p>
+            </div>
+            <div class="text-right">
+                <p class="text-slate-500 text-xs">Unrealized FX P/L</p>
+                <p id="total-pl" class="font-bold text-slate-500 text-lg">฿0.00</p>
+            </div>
+        </div>
+
+        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4 h-64 relative">
+            <canvas id="fxChart"></canvas>
+        </div>
+
+        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4 space-y-3">
+            <div class="flex items-center gap-2 mb-2"><i data-lucide="plus-circle" class="w-4 h-4 text-blue-500"></i><span class="text-sm font-bold text-white">Record Transaction</span></div>
+            
+            <div class="grid grid-cols-2 gap-2">
+                <input type="date" id="inp-date" class="bg-black border border-slate-800 rounded-xl px-3 py-2 text-white text-sm">
+                <select id="inp-type" class="bg-black border border-slate-800 rounded-xl px-3 py-2 text-white text-sm">
+                    <option value="BUY">🟢 Deposit (Buy USD)</option>
+                    <option value="SELL">🔴 Withdraw (Sell USD)</option>
+                </select>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-2">
+                <input type="number" id="inp-amount" placeholder="Amount ($ USD)" class="bg-black border border-slate-800 rounded-xl px-3 py-2 text-white text-sm focus:border-blue-500">
+                <input type="number" id="inp-rate" placeholder="Rate (THB)" class="bg-black border border-slate-800 rounded-xl px-3 py-2 text-white text-sm focus:border-blue-500">
+            </div>
+            <input type="text" id="inp-note" placeholder="Note (e.g. Salary, Dividend)" class="w-full bg-black border border-slate-800 rounded-xl px-3 py-2 text-white text-sm focus:border-blue-500">
+            
+            <button onclick="addTx()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl text-sm transition-all shadow-lg shadow-blue-900/20">Save Transaction</button>
+        </div>
+
+        <div class="space-y-2 pb-10">
+            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">History</h3>
+            <div id="tx-list" class="space-y-2"></div>
+        </div>
+
+        <div id="modal-settings" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50 fade-in">
+            <div class="bg-slate-900 w-full max-w-sm rounded-2xl border border-slate-800 p-6 space-y-4 shadow-2xl">
+                <h3 class="text-lg font-bold text-white">Settings</h3>
+                <div>
+                    <label class="text-xs text-slate-500 uppercase font-bold block mb-2">Google Sheet CSV Link</label>
+                    <textarea id="inp-csv-link" rows="3" placeholder="https://docs.google.com/spreadsheets/.../pub?output=csv" class="w-full bg-black border border-slate-800 rounded-xl p-3 text-xs text-slate-300 focus:border-blue-500 resize-none"></textarea>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="toggleSettings()" class="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-400 text-sm font-bold">Cancel</button>
+                    <button onclick="saveSettings()" class="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold">Save</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+        document.getElementById('inp-date').valueAsDate = new Date();
+
+        // State
+        let transactions = JSON.parse(localStorage.getItem('fx_tx')) || [];
+        let config = JSON.parse(localStorage.getItem('fx_config')) || { csvUrl: '' };
+        let currentMarketRate = 0;
+        let chartInstance = null;
+
+        // Init
+        calculateAndRender();
+        if(config.csvUrl) fetchRate();
+
+        // --- CORE LOGIC ---
+        function addTx() {
+            const date = document.getElementById('inp-date').value;
+            const type = document.getElementById('inp-type').value;
+            const amount = parseFloat(document.getElementById('inp-amount').value);
+            const rate = parseFloat(document.getElementById('inp-rate').value);
+            const note = document.getElementById('inp-note').value;
+
+            if(!date || isNaN(amount) || isNaN(rate)) return alert("Please fill details correctly.");
+
+            transactions.push({ id: Date.now(), date, type, amount, rate, note });
+            transactions.sort((a,b) => new Date(a.date) - new Date(b.date)); // Keep chronological
+            
+            saveData();
+            calculateAndRender();
+            
+            // Clear form
+            document.getElementById('inp-amount').value = '';
+            document.getElementById('inp-rate').value = '';
+            document.getElementById('inp-note').value = '';
+        }
+
+        function removeTx(id) {
+            if(confirm('Delete this transaction?')) {
+                transactions = transactions.filter(t => t.id !== id);
+                saveData();
+                calculateAndRender();
+            }
+        }
+
+        function calculateAndRender() {
+            let totalUSD = 0;
+            let totalTHBCost = 0;
+            let avgRate = 0;
+            
+            // History for Chart
+            const chartLabels = [];
+            const chartAvgData = [];
+            const chartExecData = [];
+
+            const list = document.getElementById('tx-list');
+            list.innerHTML = '';
+
+            transactions.forEach(tx => {
+                const isBuy = tx.type === 'BUY';
+                
+                // --- CALCULATION LOGIC (Weighted Average) ---
+                if (isBuy) {
+                    // Buying: Update Average Cost
+                    totalTHBCost += (tx.amount * tx.rate);
+                    totalUSD += tx.amount;
+                } else {
+                    // Selling: Average Cost STAYS SAME, but total holdings decrease
+                    // We realize profit/loss here, but cost basis per unit doesn't change
+                    const costOfSold = tx.amount * avgRate; // Use PREVIOUS avg rate
+                    totalTHBCost -= costOfSold; 
+                    totalUSD -= tx.amount;
+                }
+
+                // Prevent division by zero
+                avgRate = totalUSD > 0 ? totalTHBCost / totalUSD : 0;
+
+                // --- RENDER LIST ---
+                const html = `
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex justify-between items-center">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-mono text-slate-500">${tx.date}</span>
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${isBuy ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}">${isBuy ? 'DEPOSIT' : 'WITHDRAW'}</span>
+                        </div>
+                        <div class="text-white font-bold text-sm mt-1">$${tx.amount.toLocaleString()} @ ${tx.rate.toFixed(2)}</div>
+                        <div class="text-xs text-slate-500">${tx.note || '-'}</div>
+                    </div>
+                    <button onclick="removeTx(${tx.id})" class="text-slate-700 hover:text-rose-500"><i data-lucide="trash-2" width="16"></i></button>
+                </div>`;
+                list.insertAdjacentHTML('afterbegin', html); // Newest top
+
+                // --- PREP CHART ---
+                chartLabels.push(tx.date);
+                chartAvgData.push(avgRate);
+                chartExecData.push(tx.rate); // The rate we actually got
+            });
+
+            // Update Dashboard
+            document.getElementById('avg-cost').innerText = avgRate.toFixed(2);
+            document.getElementById('total-usd').innerText = '$' + totalUSD.toLocaleString(undefined, {minimumFractionDigits:2});
+
+            // Compare with Market Rate
+            if (currentMarketRate > 0) {
+                const diff = currentMarketRate - avgRate;
+                const diffPct = avgRate > 0 ? (diff / avgRate) * 100 : 0;
+                const pl = (currentMarketRate * totalUSD) - totalTHBCost;
+
+                const elDiff = document.getElementById('diff-pct');
+                elDiff.innerHTML = `${diff >= 0 ? '▲' : '▼'} ${Math.abs(diffPct).toFixed(2)}% vs Market`;
+                elDiff.className = `text-[10px] font-bold mt-1 ${diff >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+                
+                // Color Avg Cost Text
+                const elAvg = document.getElementById('avg-cost');
+                elAvg.className = `text-3xl font-black ${currentMarketRate > avgRate ? 'text-emerald-400' : 'text-rose-400'}`;
+
+                const elPL = document.getElementById('total-pl');
+                elPL.innerText = (pl>=0?'+':'') + '฿' + pl.toLocaleString(undefined, {minimumFractionDigits:2});
+                elPL.className = `font-bold text-lg ${pl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+            }
+
+            renderChart(chartLabels, chartAvgData, chartExecData);
+            lucide.createIcons();
+        }
+
+        // --- CHART ---
+        function renderChart(labels, avgData, execData) {
+            const ctx = document.getElementById('fxChart').getContext('2d');
+            if(chartInstance) chartInstance.destroy();
+
+            // Create a "Market Rate Line" dataset if we have a current rate
+            // (Drawing a flat line across the chart for current status)
+            const currentRateLine = labels.map(() => currentMarketRate);
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'My Avg Cost',
+                            data: avgData,
+                            borderColor: '#34d399', // Emerald
+                            backgroundColor: '#34d399',
+                            tension: 0.2,
+                            borderWidth: 2,
+                            pointRadius: 0
+                        },
+                        {
+                            label: 'Transaction Rate',
+                            data: execData,
+                            borderColor: '#64748b', // Slate
+                            backgroundColor: '#64748b',
+                            borderDash: [5, 5],
+                            tension: 0.2,
+                            pointRadius: 4,
+                            showLine: false // Just dots
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { 
+                        legend: { labels: { color: '#94a3b8', font: {size: 10} } },
+                        annotation: {
+                            // If we had the annotation plugin, we'd draw a line. 
+                            // For simplicity, we just rely on the dashboard for Current Rate.
+                        }
+                    },
+                    scales: {
+                        x: { display: false },
+                        y: { 
+                            grid: { color: '#1e293b' },
+                            ticks: { color: '#64748b' } 
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- FETCH & UTILS ---
+        function saveData() { localStorage.setItem('fx_tx', JSON.stringify(transactions)); }
+        
+        function toggleSettings() { 
+            const m = document.getElementById('modal-settings'); 
+            m.classList.toggle('hidden'); m.classList.toggle('flex'); 
+            document.getElementById('inp-csv-link').value = config.csvUrl; 
+        }
+        
+        function saveSettings() { 
+            config.csvUrl = document.getElementById('inp-csv-link').value.trim(); 
+            localStorage.setItem('fx_config', JSON.stringify(config)); 
+            toggleSettings(); 
+            if(config.csvUrl) fetchRate(); 
+        }
+
+        async function fetchRate() {
+            if (!config.csvUrl) return alert("Set CSV Link first!");
+            const btn = document.getElementById('btn-refresh'); 
+            btn.classList.add('animate-spin');
+            
+            try {
+                let res;
+                // Auto-Proxy Logic
+                try { res = await fetch(config.csvUrl); if (!res.ok) throw new Error(); } 
+                catch (e) { res = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(config.csvUrl)); }
+                
+                const text = await res.text();
+                // Parse CSV specifically for GoogleFinance CURRENCY format
+                // Usually returns: "Date", "Close" OR just headers and value
+                // We'll look for the number in the 2nd column
+                const rows = text.split(/\r?\n/);
+                // Row 1: Headers, Row 2: Data
+                if(rows.length < 2) throw new Error("Invalid CSV");
+                
+                const dataRow = rows[1].split(',');
+                // Assuming Col B is price
+                const rate = parseFloat(dataRow[1]); 
+
+                if(!isNaN(rate)) {
+                    currentMarketRate = rate;
+                    document.getElementById('market-rate').innerText = rate.toFixed(2);
+                    calculateAndRender(); // Re-calc with new market rate
+                }
+
+            } catch(e) { 
+                console.error(e);
+                alert("Could not fetch rate. Check CSV link."); 
+            } finally { 
+                btn.classList.remove('animate-spin'); 
+            }
+        }
+    </script>
+</body>
+</html>
