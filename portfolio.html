@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Smart Rebalance</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        input, button { outline: none; }
+        body { padding-bottom: env(safe-area-inset-bottom); }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 antialiased min-h-screen font-sans selection:bg-emerald-500/30 pb-20">
+
+    <div class="max-w-xl mx-auto p-4 space-y-6 fade-in">
+        
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-gradient-to-tr from-indigo-500 to-purple-600 p-2.5 rounded-xl shadow-lg shadow-indigo-900/20">
+                    <i data-lucide="scale" class="text-white w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white tracking-tight">Smart Rebalance</h1>
+                    <p class="text-xs text-zinc-500">Auto-Calculate Action</p>
+                </div>
+            </div>
+            <button onclick="toggleSettings()" class="p-2 rounded-full hover:bg-zinc-800 text-zinc-400 transition-colors">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <div class="bg-zinc-900 rounded-2xl border border-zinc-800 p-4">
+                <p class="text-[10px] text-zinc-500 uppercase font-bold tracking-wider mb-1">Portfolio Value</p>
+                <div class="flex items-baseline gap-1">
+                    <h2 id="total-value" class="text-2xl font-black text-white">$0.00</h2>
+                    <button onclick="refreshPrices()" id="btn-refresh" class="text-indigo-500 hover:text-indigo-400"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                </div>
+                <p class="text-[10px] text-zinc-600 mt-1" id="last-updated">Tap to sync</p>
+            </div>
+            <div class="bg-zinc-900 rounded-2xl border border-zinc-800 p-4">
+                <p class="text-[10px] text-zinc-500 uppercase font-bold tracking-wider mb-1">Total Target</p>
+                <h2 id="total-target-pct" class="text-2xl font-black text-zinc-500">0%</h2>
+                <p class="text-[10px] text-zinc-600 mt-1">Should sum to 100%</p>
+            </div>
+        </div>
+
+        <div class="bg-zinc-900/50 rounded-2xl border border-zinc-800 p-4 flex justify-center items-center relative h-64">
+            <canvas id="chartAlloc"></canvas>
+            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span class="text-xs text-zinc-500 font-bold">ASSETS</span>
+                <span id="chart-center-count" class="text-2xl font-black text-white">0</span>
+            </div>
+        </div>
+
+        <div class="bg-zinc-900 rounded-2xl border border-zinc-800 p-4 space-y-3">
+            <div class="flex items-center gap-2 mb-2"><i data-lucide="plus-circle" class="w-4 h-4 text-indigo-500"></i><span class="text-sm font-bold text-white">Add / Edit Asset</span></div>
+            <div class="grid grid-cols-4 gap-2">
+                <input type="text" id="inp-ticker" placeholder="Ticker" class="col-span-2 bg-black border border-zinc-800 rounded-xl px-3 py-2 text-white text-sm focus:border-indigo-500 uppercase">
+                <input type="number" id="inp-target" placeholder="Target %" class="col-span-2 bg-black border border-zinc-800 rounded-xl px-3 py-2 text-white text-sm focus:border-indigo-500 text-indigo-400 font-bold">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <input type="number" id="inp-qty" placeholder="Qty" class="bg-black border border-zinc-800 rounded-xl px-3 py-2 text-white text-sm focus:border-indigo-500">
+                <input type="number" id="inp-price" placeholder="Cost Price" class="bg-black border border-zinc-800 rounded-xl px-3 py-2 text-white text-sm focus:border-indigo-500">
+            </div>
+            <button onclick="addHolding()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-sm transition-all shadow-lg shadow-indigo-900/20">Save / Update</button>
+        </div>
+
+        <div id="holdings-list" class="space-y-3 pb-10"></div>
+
+        <div id="modal-settings" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50 fade-in">
+            <div class="bg-zinc-900 w-full max-w-sm rounded-2xl border border-zinc-800 p-6 space-y-4 shadow-2xl">
+                <h3 class="text-lg font-bold text-white">Settings</h3>
+                <div>
+                    <label class="text-xs text-zinc-500 uppercase font-bold block mb-2">Google Sheet CSV Link</label>
+                    <textarea id="inp-csv-link" rows="3" placeholder="https://docs.google.com/spreadsheets/.../pub?output=csv" class="w-full bg-black border border-zinc-800 rounded-xl p-3 text-xs text-zinc-300 focus:border-indigo-500 resize-none"></textarea>
+                </div>
+                <div class="pt-2 border-t border-zinc-800">
+                    <p class="text-[10px] text-zinc-500 mb-2">Data Backup (Safe Copy)</p>
+                    <button onclick="exportData()" class="w-full py-2 rounded-lg bg-zinc-800 text-zinc-300 text-xs font-bold mb-2">📋 Copy Data to Clipboard</button>
+                    <button onclick="importData()" class="w-full py-2 rounded-lg bg-zinc-800 text-zinc-300 text-xs font-bold">📥 Import Data from Clipboard</button>
+                </div>
+                <div class="flex gap-2 mt-4">
+                    <button onclick="toggleSettings()" class="flex-1 py-2.5 rounded-xl bg-zinc-800 text-zinc-400 text-sm font-bold">Close</button>
+                    <button onclick="saveSettings()" class="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold">Save Link</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+        
+        let holdings = JSON.parse(localStorage.getItem('smart_port_holdings')) || [];
+        let config = JSON.parse(localStorage.getItem('smart_port_config')) || { csvUrl: '' };
+        let chartInstance = null;
+        const moneyFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+
+        // INIT
+        renderHoldings();
+        updateCharts();
+
+        // --- CORE LOGIC ---
+        function addHolding() {
+            const ticker = document.getElementById('inp-ticker').value.toUpperCase().trim();
+            const qty = parseFloat(document.getElementById('inp-qty').value);
+            const cost = parseFloat(document.getElementById('inp-price').value);
+            const target = parseFloat(document.getElementById('inp-target').value) || 0;
+
+            if (!ticker || isNaN(qty) || isNaN(cost)) return alert("Please fill details");
+
+            const existing = holdings.find(h => h.ticker === ticker);
+            if (existing) {
+                const totalCost = (existing.qty * existing.avgCost) + (qty * cost);
+                const totalQty = existing.qty + qty;
+                existing.qty = totalQty;
+                existing.avgCost = totalCost / totalQty;
+                existing.target = target > 0 ? target : existing.target; 
+            } else {
+                holdings.push({ ticker, qty, avgCost: cost, marketPrice: cost, target: target });
+            }
+            saveData(); renderHoldings(); updateCharts();
+            document.getElementById('inp-ticker').value = ''; document.getElementById('inp-qty').value = ''; 
+            document.getElementById('inp-price').value = ''; document.getElementById('inp-target').value = '';
+        }
+
+        function removeHolding(ticker) {
+            if(confirm('Delete ' + ticker + '?')) { holdings = holdings.filter(h => h.ticker !== ticker); saveData(); renderHoldings(); updateCharts(); }
+        }
+
+        function renderHoldings() {
+            // 1. Calculate Portfolio Totals
+            let totalVal = 0;
+            let totalTarget = 0;
+            holdings.forEach(h => {
+                totalVal += h.qty * (h.marketPrice || h.avgCost);
+                totalTarget += (h.target || 0);
+            });
+
+            const list = document.getElementById('holdings-list'); list.innerHTML = '';
+            
+            // 2. Render Items
+            holdings.forEach(h => {
+                const marketVal = h.qty * (h.marketPrice || h.avgCost);
+                const currentPct = totalVal > 0 ? (marketVal / totalVal) * 100 : 0;
+                const targetPct = h.target || 0;
+                
+                // --- REBALANCE CALCULATION ---
+                // Ideal Value = Total Portfolio * (Target% / 100)
+                const idealVal = totalVal * (targetPct / 100);
+                const diffVal = idealVal - marketVal; // Positive = Buy, Negative = Sell
+                const diffUnits = diffVal / (h.marketPrice || h.avgCost);
+
+                let actionHtml = '';
+                // Threshold: Only suggest action if diff is > $10 (to avoid noise)
+                if (Math.abs(diffVal) > 10) { 
+                    if (diffVal > 0) {
+                        // BUY
+                        actionHtml = `
+                        <div class="mt-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-2 flex justify-between items-center">
+                            <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-wide">🟢 Buy More</span>
+                            <div class="text-right">
+                                <span class="block text-xs font-bold text-emerald-300">+${moneyFmt.format(diffVal)}</span>
+                                <span class="block text-[10px] text-emerald-500/70">+${diffUnits.toFixed(2)} shares</span>
+                            </div>
+                        </div>`;
+                    } else {
+                        // SELL
+                        actionHtml = `
+                        <div class="mt-2 bg-rose-500/10 border border-rose-500/30 rounded-lg p-2 flex justify-between items-center">
+                            <span class="text-[10px] font-bold text-rose-400 uppercase tracking-wide">🔴 Sell / Trim</span>
+                            <div class="text-right">
+                                <span class="block text-xs font-bold text-rose-300">${moneyFmt.format(diffVal)}</span>
+                                <span class="block text-[10px] text-rose-500/70">${diffUnits.toFixed(2)} shares</span>
+                            </div>
+                        </div>`;
+                    }
+                } else {
+                    // ON TARGET
+                    actionHtml = `
+                    <div class="mt-2 bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-2 flex justify-center items-center">
+                        <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wide">✨ Perfect Balance</span>
+                    </div>`;
+                }
+
+                // Bar Color
+                let barColor = 'bg-zinc-600';
+                if (currentPct > targetPct + 2) barColor = 'bg-rose-500'; // Overweight
+                else if (currentPct < targetPct - 2) barColor = 'bg-emerald-500'; // Underweight
+                else barColor = 'bg-indigo-500'; // Good
+
+                list.insertAdjacentHTML('beforeend', `
+                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-white text-lg">${h.ticker}</span>
+                                <span class="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-md">${h.qty.toLocaleString()} units</span>
+                            </div>
+                            <div class="text-xs text-zinc-500 mt-1">Price: $${(h.marketPrice||h.avgCost).toFixed(2)}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-bold text-white">${moneyFmt.format(marketVal)}</div>
+                            <div class="text-xs font-medium text-zinc-400 mt-1">Target: <span class="text-white">${targetPct}%</span></div>
+                        </div>
+                    </div>
+
+                    <div class="relative pt-1">
+                        <div class="flex mb-1 items-center justify-between">
+                            <span class="text-[10px] font-semibold inline-block py-1 px-2 uppercase rounded-full text-zinc-300 bg-zinc-800">
+                                Actual: ${currentPct.toFixed(1)}%
+                            </span>
+                        </div>
+                        <div class="overflow-hidden h-2 mb-1 text-xs flex rounded bg-zinc-800">
+                            <div style="width:${Math.min(currentPct, 100)}%" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center ${barColor} transition-all duration-500"></div>
+                        </div>
+                    </div>
+
+                    ${actionHtml}
+
+                    <div class="flex justify-end mt-2">
+                         <button onclick="removeHolding('${h.ticker}')" class="text-xs text-zinc-600 hover:text-rose-500 flex items-center gap-1"><i data-lucide="trash-2" width="12"></i> Remove</button>
+                    </div>
+                </div>`);
+            });
+
+            // Update Header Stats
+            document.getElementById('total-value').innerText = moneyFmt.format(totalVal);
+            document.getElementById('total-target-pct').innerText = totalTarget + '%';
+            document.getElementById('total-target-pct').className = `text-2xl font-black ${totalTarget === 100 ? 'text-emerald-500' : 'text-rose-500'}`;
+            document.getElementById('chart-center-count').innerText = holdings.length;
+            lucide.createIcons();
+        }
+
+        // --- CHART ---
+        function updateCharts() {
+            const ctxAlloc = document.getElementById('chartAlloc').getContext('2d');
+            if (chartAllocInstance) chartAllocInstance.destroy();
+            const sortedH = [...holdings].sort((a,b) => (b.qty*(b.marketPrice||b.avgCost)) - (a.qty*(a.marketPrice||a.avgCost)));
+            
+            chartAllocInstance = new Chart(ctxAlloc, {
+                type: 'doughnut',
+                data: { 
+                    labels: sortedH.map(h => h.ticker), 
+                    datasets: [{ 
+                        data: sortedH.map(h => h.qty * (h.marketPrice || h.avgCost)), 
+                        backgroundColor: ['#6366f1','#8b5cf6','#ec4899','#f43f5e','#f59e0b','#10b981','#06b6d4'], 
+                        borderWidth: 0, 
+                        hoverOffset: 4 
+                    }] 
+                },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } } }
+            });
+        }
+
+        // --- DATA & SYNC ---
+        function saveData() { localStorage.setItem('smart_port_holdings', JSON.stringify(holdings)); }
+        function toggleSettings() { const m = document.getElementById('modal-settings'); m.classList.toggle('hidden'); m.classList.toggle('flex'); document.getElementById('inp-csv-link').value = config.csvUrl; }
+        function saveSettings() { config.csvUrl = document.getElementById('inp-csv-link').value.trim(); localStorage.setItem('smart_port_config', JSON.stringify(config)); toggleSettings(); if(config.csvUrl) refreshPrices(); }
+        
+        // Backup Functions
+        function exportData() {
+            const data = { h: holdings, c: config };
+            navigator.clipboard.writeText(JSON.stringify(data)).then(() => alert("Data copied! Save it somewhere safe."));
+        }
+        function importData() {
+            const str = prompt("Paste your data string here:");
+            if(str) {
+                try {
+                    const data = JSON.parse(str);
+                    if(data.h) holdings = data.h;
+                    if(data.c) config = data.c;
+                    saveData(); localStorage.setItem('smart_port_config', JSON.stringify(config));
+                    renderHoldings(); updateCharts(); alert("Import successful!");
+                } catch(e) { alert("Invalid data format"); }
+            }
+        }
+
+        async function refreshPrices() {
+            if (!config.csvUrl) return alert("Set CSV Link in Settings first!");
+            const btn = document.getElementById('btn-refresh'); btn.classList.add('animate-spin');
+            try {
+                let res; try { res = await fetch(config.csvUrl); if(!res.ok) throw new Error(); } catch(e) { res = await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(config.csvUrl)); }
+                const text = await res.text(); const rows = text.split(/\r?\n/); const headers = rows[0].split(',').map(h=>h.trim().toLowerCase());
+                const idxTicker = headers.findIndex(h=>h.includes('ticker')||h.includes('symbol')); const idxPrice = headers.findIndex(h=>h.includes('price')||h.includes('close'));
+                
+                let cnt=0;
+                for(let i=1; i<rows.length; i++) {
+                    const c=rows[i].split(','); if(c.length<=idxPrice) continue;
+                    const tk=c[idxTicker].trim().toUpperCase().replace(/['"]+/g,''); const pr=parseFloat(c[idxPrice].replace(/['"$]+/g,''));
+                    if(tk && !isNaN(pr)) {
+                        const h=holdings.find(x=>x.ticker===tk||tk.includes(':'+x.ticker));
+                        if(h) { h.marketPrice=pr; cnt++; }
+                    }
+                }
+                saveData(); renderHoldings(); updateCharts(); document.getElementById('last-updated').innerText = 'Updated: '+new Date().toLocaleTimeString();
+                if(cnt===0) alert("No matching tickers found.");
+            } catch(e) { alert("Error: "+e.message); } finally { btn.classList.remove('animate-spin'); }
+        }
+    </script>
+</body>
+</html>
