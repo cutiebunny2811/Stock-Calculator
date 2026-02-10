@@ -129,7 +129,10 @@
         
         let holdings = JSON.parse(localStorage.getItem('smart_port_holdings')) || [];
         let config = JSON.parse(localStorage.getItem('smart_port_config')) || { csvUrl: '' };
-        let chartInstance = null;
+        
+        // --- แก้ตรงนี้ครับ (จาก chartInstance เป็น chartAllocInstance) ---
+        let chartAllocInstance = null; 
+        
         const moneyFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
         // INIT
