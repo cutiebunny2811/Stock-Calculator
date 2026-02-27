@@ -7,24 +7,39 @@
     <link rel="apple-touch-icon" href="https://emojicdn.elk.sh/🍜">
     <link rel="icon" href="https://emojicdn.elk.sh/🍜">
     
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
+    <div id="error-log" style="color: #ff6b6b; padding: 20px; font-family: sans-serif; display: none; background: #2a0808; height: 100vh;"></div>
+    
     <div id="root"></div>
+
+    <script>
+        window.addEventListener('error', function(e) {
+            document.getElementById('error-log').style.display = 'block';
+            document.getElementById('error-log').innerText = 'แอปสะดุด! บั๊กคือ: ' + e.message;
+        });
+    </script>
 
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
 
-        const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');`;
+        // 🚀 แก้เครื่องหมายคำพูดป้องกัน Syntax Error
+        const FONTS = "@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');";
 
-        // 🔴 กุญแจเชื่อมต่อ Supabase ของคุณ 🔴
+        // 🔴 กุญแจเชื่อมต่อ Supabase ของคุณ
         const supabaseUrl = 'https://zzynqlqnzdhkffvqvpzt.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp6eW5xbHFuemRoa2ZmdnF2cHp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMTMyMTAsImV4cCI6MjA4Nzc4OTIxMH0.MLsl37DEKZM5xImhJlJlZMDVjzWTDY3DmZGt1Br-d8Y';
-        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+        
+        // เช็คความพร้อมของระบบฐานข้อมูล
+        if (!window.supabase) {
+            throw new Error("โหลด Supabase ไม่สำเร็จ ลองรีเฟรชหรือเช็คอินเทอร์เน็ตครับ");
+        }
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
         const CATEGORIES = ["โปรตีน", "ผัก", "เครื่องปรุง", "ของแห้ง", "นม/ไข่", "อื่นๆ"];
         const CAT_COLORS = { "โปรตีน": "#f97316", "ผัก": "#22c55e", "เครื่องปรุง": "#f59e0b", "ของแห้ง": "#a78bfa", "นม/ไข่": "#38bdf8", "อื่นๆ": "#94a3b8" };
@@ -183,7 +198,6 @@
             function openAdd() { setForm({ name: "", category: "โปรตีน", purchaseUnit: "kg", purchasePrice: "", recipeUnit: "g", conversionFactor: "1000", yieldPct: "100" }); setEditItem(null); setShowModal(true); }
             function openEdit(ing) { setForm({ ...ing, purchasePrice: String(ing.purchasePrice), conversionFactor: String(ing.conversionFactor), yieldPct: String(ing.yieldPct) }); setEditItem(ing.id); setShowModal(true); }
 
-            // 🚀 อัปเกรด: บันทึกข้อมูลวัตถุดิบลง Supabase
             async function save() {
                 const data = { 
                     name: form.name, category: form.category, purchaseUnit: form.purchaseUnit, 
@@ -201,7 +215,6 @@
                 setShowModal(false);
             }
 
-            // 🚀 อัปเกรด: ลบข้อมูลออกจาก Supabase
             async function del(id) { 
                 if(!confirm("ต้องการลบวัตถุดิบนี้จริงๆ หรือไม่?")) return;
                 await supabaseClient.from('ingredients').delete().eq('id', id);
@@ -308,7 +321,6 @@
             const [addIngId, setAddIngId] = useState("");
             const [addQty, setAddQty] = useState("100");
 
-            // อัปเดต addIngId ทันทีที่มีวัตถุดิบโหลดเข้ามา
             useEffect(() => {
                 if(ingredients.length > 0 && !addIngId) setAddIngId(ingredients[0].id);
                 if(recipes.length > 0 && !selected) setSelected(recipes[0].id);
@@ -317,7 +329,6 @@
             const recipe = recipes.find(r => r.id === selected);
             const totalCost = recipe ? calcRecipeCost(recipe, ingredients) / recipe.servings : 0;
 
-            // 🚀 อัปเกรด: สร้างสูตรอาหารเข้า Database
             async function createRecipe() {
                 if (!newName.trim()) return;
                 const { data: inserted } = await supabaseClient.from('recipes').insert([{ name: newName, servings: 1 }]).select().single();
@@ -330,7 +341,6 @@
                 setNewName("");
             }
 
-            // 🚀 อัปเกรด: เพิ่มส่วนผสมเข้า Database
             async function addItem() {
                 const id = parseInt(addIngId);
                 const qty = parseFloat(addQty);
@@ -346,20 +356,17 @@
                 }
             }
 
-            // 🚀 อัปเกรด: ลบส่วนผสม
             async function removeItem(riId) {
                 await supabaseClient.from('recipe_items').delete().eq('id', riId);
                 setRecipes(prev => prev.map(r => r.id === selected ? { ...r, items: r.items.filter(i => i.id !== riId) } : r));
             }
 
-            // 🚀 อัปเกรด: อัปเดตปริมาณส่วนผสม
             async function updateQty(riId, val) {
                 const qty = parseFloat(val) || 0;
                 const { data } = await supabaseClient.from('recipe_items').update({ qty }).eq('id', riId).select().single();
                 if(data) setRecipes(prev => prev.map(r => r.id === selected ? { ...r, items: r.items.map(i => i.id === riId ? data : i) } : r));
             }
 
-            // 🚀 อัปเกรด: ลบสูตรอาหารทั้งหมด
             async function deleteRecipe() {
                 if(!confirm("ต้องการลบสูตรอาหารนี้ใช่ไหม? (เมนูที่ผูกอยู่จะได้รับผลกระทบ)")) return;
                 await supabaseClient.from('recipes').delete().eq('id', selected);
@@ -369,7 +376,6 @@
 
             return (
                 <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 18, height: "calc(100vh - 120px)" }}>
-                    {/* Sidebar list */}
                     <div style={{ background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column" }}>
                         <div style={{ padding: "1rem", borderBottom: "1px solid #2a2a45", fontSize: "0.75rem", color: "#6b7280", letterSpacing: "0.08em", textTransform: "uppercase" }}>สูตรอาหาร</div>
                         <div style={{ flex: 1, overflow: "auto" }}>
@@ -399,7 +405,6 @@
                         </div>
                     </div>
 
-                    {/* Recipe detail */}
                     {recipe ? (
                         <div style={{ background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column" }}>
                             <div style={{ padding: "1rem 1.5rem", borderBottom: "1px solid #2a2a45", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -431,7 +436,6 @@
                                                 <div style={{ fontSize: "0.7rem", color: "#6b7280" }}>{ing.category} · ฿{calcCostPerUnit(ing).toFixed(4)}/{ing.recipeUnit}</div>
                                             </div>
                                             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                                {/* ใช้ item.id ซึ่งเป็น PK จาก DB */}
                                                 <input type="number" value={item.qty} onChange={e => updateQty(item.id, e.target.value)} style={{ width: 70, background: "#12121f", border: "1px solid #2a2a45", borderRadius: 6, padding: "4px 8px", color: "#f1f5f9", fontSize: "0.8rem", fontFamily: "'JetBrains Mono', monospace", textAlign: "right" }} />
                                                 <span style={{ fontSize: "0.72rem", color: "#6b7280", width: 25 }}>{ing.recipeUnit}</span>
                                             </div>
@@ -442,7 +446,6 @@
                                 })}
                             </div>
 
-                            {/* Add ingredient bar */}
                             <div style={{ padding: "1rem 1.5rem", borderTop: "1px solid #2a2a45", background: "#12121f" }}>
                                 <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
                                     <div style={{ flex: 1 }}>
@@ -484,7 +487,6 @@
                 return { ...item, cost, pct, profit, suggested };
             });
 
-            // 🚀 อัปเกรด: บันทึกเมนูลง Database
             async function save() {
                 const data = { name: form.name, recipeId: parseInt(form.recipeId), price: parseFloat(form.price) };
                 const { data: inserted } = await supabaseClient.from('menus').insert([data]).select().single();
@@ -493,7 +495,6 @@
                 setForm({ name: "", recipeId: recipes[0]?.id || "", price: "" });
             }
 
-            // 🚀 อัปเกรด: ลบเมนูจาก Database
             async function delMenu(id) {
                 await supabaseClient.from('menus').delete().eq('id', id);
                 setMenu(prev => prev.filter(m => m.id !== id));
@@ -595,13 +596,12 @@
 
         // ─── ROOT ────────────────────────────────────────────────────────────────────
         export default function App() {
-            const [tab, setTab] = useState("ingredients"); // เริ่มต้นที่หน้าวัตถุดิบเพราะฐานข้อมูลเพิ่งสร้างใหม่
+            const [tab, setTab] = useState("ingredients");
             const [ingredients, setIngredients] = useState([]);
             const [recipes, setRecipes] = useState([]);
             const [menu, setMenu] = useState([]);
             const [loadingDb, setLoadingDb] = useState(true);
 
-            // 🚀 อัปเกรด: โหลดข้อมูลจาก Supabase ตอนเปิดแอป
             useEffect(() => {
                 async function loadData() {
                     try {
