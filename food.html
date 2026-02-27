@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Food Cost - Powered by Supabase</title>
+    <link rel="apple-touch-icon" href="https://emojicdn.elk.sh/🍜">
+    <link rel="icon" href="https://emojicdn.elk.sh/🍜">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');`;
+
+        // 🔴 กุญแจเชื่อมต่อ Supabase ของคุณ 🔴
+        const supabaseUrl = 'https://zzynqlqnzdhkffvqvpzt.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp6eW5xbHFuemRoa2ZmdnF2cHp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMTMyMTAsImV4cCI6MjA4Nzc4OTIxMH0.MLsl37DEKZM5xImhJlJlZMDVjzWTDY3DmZGt1Br-d8Y';
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+        const CATEGORIES = ["โปรตีน", "ผัก", "เครื่องปรุง", "ของแห้ง", "นม/ไข่", "อื่นๆ"];
+        const CAT_COLORS = { "โปรตีน": "#f97316", "ผัก": "#22c55e", "เครื่องปรุง": "#f59e0b", "ของแห้ง": "#a78bfa", "นม/ไข่": "#38bdf8", "อื่นๆ": "#94a3b8" };
+
+        // ─── HELPERS ────────────────────────────────────────────────────────────────
+        function calcCostPerUnit(ing) {
+            return (ing.purchasePrice / ing.conversionFactor) / (ing.yieldPct / 100);
+        }
+
+        function calcRecipeCost(recipe, ingredients) {
+            if(!recipe.items) return 0;
+            return recipe.items.reduce((sum, item) => {
+                const ing = ingredients.find(i => i.id === item.ingredientId);
+                if (!ing) return sum;
+                return sum + calcCostPerUnit(ing) * item.qty;
+            }, 0);
+        }
+
+        function fcColor(pct) {
+            if (pct <= 30) return "#22c55e";
+            if (pct <= 38) return "#f59e0b";
+            return "#ef4444";
+        }
+
+        function fcBg(pct) {
+            if (pct <= 30) return "rgba(34,197,94,0.12)";
+            if (pct <= 38) return "rgba(245,158,11,0.12)";
+            return "rgba(239,68,68,0.12)";
+        }
+
+        // ─── COMPONENTS ─────────────────────────────────────────────────────────────
+        function StatCard({ label, value, sub, accent }) {
+            return (
+                <div style={{ background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 12, padding: "1.25rem 1.5rem", position: "relative", overflow: "hidden" }}>
+                    <div style={{ position: "absolute", top: 0, left: 0, width: 3, height: "100%", background: accent, borderRadius: "3px 0 0 3px" }} />
+                    <div style={{ fontSize: "0.7rem", color: "#6b7280", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "'JetBrains Mono', monospace", marginBottom: 8 }}>{label}</div>
+                    <div style={{ fontSize: "1.8rem", fontWeight: 700, color: "#f1f5f9", lineHeight: 1 }}>{value}</div>
+                    {sub && <div style={{ fontSize: "0.75rem", color: accent, marginTop: 6, fontFamily: "'JetBrains Mono', monospace" }}>{sub}</div>}
+                </div>
+            );
+        }
+
+        function Modal({ title, onClose, children }) {
+            return (
+                <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+                    <div style={{ background: "#12121f", border: "1px solid #2a2a45", borderRadius: 16, width: "100%", maxWidth: 520, maxHeight: "90vh", overflow: "auto", boxShadow: "0 25px 80px rgba(0,0,0,0.6)" }}>
+                        <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #1e1e35", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <div style={{ fontWeight: 600, fontSize: "1rem", color: "#f1f5f9" }}>{title}</div>
+                            <button onClick={onClose} style={{ background: "#1e1e35", border: "none", color: "#94a3b8", width: 30, height: 30, borderRadius: 8, cursor: "pointer", fontSize: "1rem", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                        </div>
+                        <div style={{ padding: "1.5rem" }}>{children}</div>
+                    </div>
+                </div>
+            );
+        }
+
+        function Input({ label, ...props }) {
+            return (
+                <div style={{ marginBottom: 14 }}>
+                    {label && <div style={{ fontSize: "0.72rem", color: "#94a3b8", marginBottom: 6, letterSpacing: "0.05em" }}>{label}</div>}
+                    <input {...props} style={{ width: "100%", background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 8, padding: "0.55rem 0.75rem", color: "#f1f5f9", fontSize: "0.85rem", fontFamily: "'Sora', sans-serif", outline: "none", ...props.style }} />
+                </div>
+            );
+        }
+
+        function Select({ label, children, ...props }) {
+            return (
+                <div style={{ marginBottom: 14 }}>
+                    {label && <div style={{ fontSize: "0.72rem", color: "#94a3b8", marginBottom: 6 }}>{label}</div>}
+                    <select {...props} style={{ width: "100%", background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 8, padding: "0.55rem 0.75rem", color: "#f1f5f9", fontSize: "0.85rem", fontFamily: "'Sora', sans-serif", outline: "none" }}>
+                        {children}
+                    </select>
+                </div>
+            );
+        }
+
+        function Btn({ children, onClick, variant = "primary", style = {} }) {
+            const base = { border: "none", borderRadius: 8, padding: "0.55rem 1.25rem", cursor: "pointer", fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: "0.82rem", transition: "opacity 0.15s" };
+            const variants = {
+                primary: { background: "linear-gradient(135deg, #f59e0b, #f97316)", color: "#0f0f1a" },
+                ghost: { background: "#1e1e35", color: "#94a3b8", border: "1px solid #2a2a45" },
+                danger: { background: "rgba(239,68,68,0.2)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)" },
+            };
+            return <button onClick={onClick} style={{ ...base, ...variants[variant], ...style }}>{children}</button>;
+        }
+
+        // ─── PAGES ──────────────────────────────────────────────────────────────────
+
+        function Dashboard({ ingredients, recipes, menu }) {
+            const menuWithCosts = menu.map(item => {
+                const recipe = recipes.find(r => r.id === item.recipeId);
+                const cost = recipe ? calcRecipeCost(recipe, ingredients) / recipe.servings : 0;
+                const pct = item.price > 0 ? (cost / item.price) * 100 : 0;
+                return { ...item, cost, pct };
+            });
+            const avgFc = menuWithCosts.length ? menuWithCosts.reduce((s, i) => s + i.pct, 0) / menuWithCosts.length : 0;
+            const highFcItems = menuWithCosts.filter(i => i.pct > 38).length;
+            const topCostIng = [...ingredients].sort((a, b) => calcCostPerUnit(b) - calcCostPerUnit(a)).slice(0, 5);
+
+            return (
+                <div>
+                    <div style={{ marginBottom: "2rem" }}>
+                        <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#f1f5f9", marginBottom: 4 }}>Overview</div>
+                        <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>ภาพรวม Food Cost ของร้านคุณ</div>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: "2rem" }}>
+                        <StatCard label="Avg Food Cost" value={`${avgFc.toFixed(1)}%`} sub={avgFc === 0 ? "เพิ่มเมนูก่อน" : avgFc <= 35 ? "✓ อยู่ในเกณฑ์ดี" : "⚠ สูงเกินเกณฑ์"} accent={avgFc <= 35 ? "#22c55e" : "#ef4444"} />
+                        <StatCard label="เมนูทั้งหมด" value={menu.length} sub={`${highFcItems} เมนูต้นทุนสูง`} accent="#f59e0b" />
+                        <StatCard label="วัตถุดิบ" value={ingredients.length} sub="รายการในระบบ" accent="#38bdf8" />
+                        <StatCard label="สูตรอาหาร" value={recipes.length} sub="recipe ทั้งหมด" accent="#a78bfa" />
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+                        <div style={{ background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 12, padding: "1.25rem" }}>
+                            <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginBottom: 14, letterSpacing: "0.08em", textTransform: "uppercase" }}>Food Cost % รายเมนู</div>
+                            {menuWithCosts.length === 0 && <div style={{color: "#6b7280", fontSize: "0.8rem"}}>ยังไม่มีข้อมูลเมนู</div>}
+                            {menuWithCosts.map(item => (
+                                <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                                    <div style={{ flex: 1, fontSize: "0.82rem", color: "#e2e8f0" }}>{item.name}</div>
+                                    <div style={{ width: 100 }}>
+                                        <div style={{ height: 6, background: "#2a2a45", borderRadius: 3 }}>
+                                            <div style={{ height: "100%", width: `${Math.min(item.pct, 100)}%`, background: fcColor(item.pct), borderRadius: 3, transition: "width 0.5s" }} />
+                                        </div>
+                                    </div>
+                                    <div style={{ fontSize: "0.78rem", fontFamily: "'JetBrains Mono', monospace", color: fcColor(item.pct), width: 42, textAlign: "right", fontWeight: 600 }}>{item.pct.toFixed(1)}%</div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div style={{ background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 12, padding: "1.25rem" }}>
+                            <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginBottom: 14, letterSpacing: "0.08em", textTransform: "uppercase" }}>Top 5 วัตถุดิบต้นทุนสูง</div>
+                            {topCostIng.length === 0 && <div style={{color: "#6b7280", fontSize: "0.8rem"}}>ยังไม่มีข้อมูลวัตถุดิบ</div>}
+                            {topCostIng.map((ing, i) => (
+                                <div key={ing.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                                    <div style={{ width: 22, height: 22, borderRadius: 6, background: "#2a2a45", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", fontFamily: "'JetBrains Mono', monospace", color: "#94a3b8" }}>{i + 1}</div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontSize: "0.82rem", color: "#e2e8f0" }}>{ing.name}</div>
+                                        <div style={{ fontSize: "0.68rem", color: "#6b7280" }}>{ing.category}</div>
+                                    </div>
+                                    <div style={{ fontSize: "0.78rem", fontFamily: "'JetBrains Mono', monospace", color: "#f59e0b", fontWeight: 600 }}>฿{calcCostPerUnit(ing).toFixed(3)}/{ing.recipeUnit}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function IngredientsPage({ ingredients, setIngredients }) {
+            const [showModal, setShowModal] = useState(false);
+            const [editItem, setEditItem] = useState(null);
+            const [filter, setFilter] = useState("ทั้งหมด");
+            const [form, setForm] = useState({ name: "", category: "โปรตีน", purchaseUnit: "kg", purchasePrice: "", recipeUnit: "g", conversionFactor: "1000", yieldPct: "100" });
+
+            function openAdd() { setForm({ name: "", category: "โปรตีน", purchaseUnit: "kg", purchasePrice: "", recipeUnit: "g", conversionFactor: "1000", yieldPct: "100" }); setEditItem(null); setShowModal(true); }
+            function openEdit(ing) { setForm({ ...ing, purchasePrice: String(ing.purchasePrice), conversionFactor: String(ing.conversionFactor), yieldPct: String(ing.yieldPct) }); setEditItem(ing.id); setShowModal(true); }
+
+            // 🚀 อัปเกรด: บันทึกข้อมูลวัตถุดิบลง Supabase
+            async function save() {
+                const data = { 
+                    name: form.name, category: form.category, purchaseUnit: form.purchaseUnit, 
+                    purchasePrice: parseFloat(form.purchasePrice), recipeUnit: form.recipeUnit, 
+                    conversionFactor: parseFloat(form.conversionFactor), yieldPct: parseFloat(form.yieldPct) 
+                };
+                
+                if (editItem) {
+                    const { data: updated } = await supabaseClient.from('ingredients').update(data).eq('id', editItem).select().single();
+                    if(updated) setIngredients(prev => prev.map(i => i.id === editItem ? updated : i));
+                } else {
+                    const { data: inserted } = await supabaseClient.from('ingredients').insert([data]).select().single();
+                    if(inserted) setIngredients(prev => [...prev, inserted]);
+                }
+                setShowModal(false);
+            }
+
+            // 🚀 อัปเกรด: ลบข้อมูลออกจาก Supabase
+            async function del(id) { 
+                if(!confirm("ต้องการลบวัตถุดิบนี้จริงๆ หรือไม่?")) return;
+                await supabaseClient.from('ingredients').delete().eq('id', id);
+                setIngredients(prev => prev.filter(i => i.id !== id)); 
+            }
+
+            const filtered = filter === "ทั้งหมด" ? ingredients : ingredients.filter(i => i.category === filter);
+
+            return (
+                <div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+                        <div>
+                            <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#f1f5f9" }}>วัตถุดิบ</div>
+                            <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>{ingredients.length} รายการ</div>
+                        </div>
+                        <Btn onClick={openAdd}>+ เพิ่มวัตถุดิบ</Btn>
+                    </div>
+
+                    <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+                        {["ทั้งหมด", ...CATEGORIES].map(cat => (
+                            <button key={cat} onClick={() => setFilter(cat)} style={{ padding: "4px 14px", borderRadius: 20, border: "1px solid", borderColor: filter === cat ? "#f59e0b" : "#2a2a45", background: filter === cat ? "rgba(245,158,11,0.15)" : "transparent", color: filter === cat ? "#f59e0b" : "#6b7280", fontSize: "0.75rem", cursor: "pointer", fontFamily: "'Sora', sans-serif" }}>{cat}</button>
+                        ))}
+                    </div>
+
+                    <div style={{ background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 12, overflow: "hidden" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                            <thead>
+                                <tr style={{ borderBottom: "1px solid #2a2a45" }}>
+                                    {["ชื่อวัตถุดิบ", "หมวด", "ราคาซื้อ", "หน่วยสูตร", "Yield %", "ต้นทุน/หน่วย", ""].map(h => (
+                                        <th key={h} style={{ padding: "0.75rem 1rem", textAlign: "left", fontSize: "0.7rem", color: "#6b7280", fontWeight: 500, letterSpacing: "0.05em", textTransform: "uppercase" }}>{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filtered.length === 0 && (
+                                    <tr><td colSpan="7" style={{textAlign: 'center', padding: '2rem', color: '#6b7280'}}>ยังไม่มีข้อมูล - กดเพิ่มวัตถุดิบด้านบนเลย!</td></tr>
+                                )}
+                                {filtered.map(ing => {
+                                    const cpu = calcCostPerUnit(ing);
+                                    return (
+                                        <tr key={ing.id} style={{ borderBottom: "1px solid #1e1e35" }} onMouseEnter={e => e.currentTarget.style.background = "#1e1e35"} onMouseLeave={e => e.currentTarget.style.background = ""}>
+                                            <td style={{ padding: "0.75rem 1rem", color: "#f1f5f9", fontSize: "0.85rem", fontWeight: 500 }}>{ing.name}</td>
+                                            <td style={{ padding: "0.75rem 1rem" }}>
+                                                <span style={{ background: `${CAT_COLORS[ing.category]}20`, color: CAT_COLORS[ing.category], border: `1px solid ${CAT_COLORS[ing.category]}40`, borderRadius: 6, padding: "2px 8px", fontSize: "0.7rem", fontWeight: 600 }}>{ing.category}</span>
+                                            </td>
+                                            <td style={{ padding: "0.75rem 1rem", color: "#e2e8f0", fontSize: "0.82rem", fontFamily: "'JetBrains Mono', monospace" }}>฿{ing.purchasePrice}/{ing.purchaseUnit}</td>
+                                            <td style={{ padding: "0.75rem 1rem", color: "#94a3b8", fontSize: "0.82rem", fontFamily: "'JetBrains Mono', monospace" }}>{ing.recipeUnit}</td>
+                                            <td style={{ padding: "0.75rem 1rem" }}>
+                                                <span style={{ color: ing.yieldPct >= 90 ? "#22c55e" : "#f59e0b", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.82rem" }}>{ing.yieldPct}%</span>
+                                            </td>
+                                            <td style={{ padding: "0.75rem 1rem", color: "#f59e0b", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.82rem", fontWeight: 600 }}>฿{cpu.toFixed(4)}/{ing.recipeUnit}</td>
+                                            <td style={{ padding: "0.75rem 1rem" }}>
+                                                <div style={{ display: "flex", gap: 6 }}>
+                                                    <button onClick={() => openEdit(ing)} style={{ background: "#2a2a45", border: "none", color: "#94a3b8", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: "0.72rem" }}>แก้ไข</button>
+                                                    <button onClick={() => del(ing.id)} style={{ background: "rgba(239,68,68,0.1)", border: "none", color: "#ef4444", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: "0.72rem" }}>ลบ</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {showModal && (
+                        <Modal title={editItem ? "แก้ไขวัตถุดิบ" : "เพิ่มวัตถุดิบใหม่"} onClose={() => setShowModal(false)}>
+                            <Input label="ชื่อวัตถุดิบ" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="เช่น หมูสับ, ไข่ไก่" />
+                            <Select label="หมวดหมู่" value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))}>
+                                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                            </Select>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                                <Input label="ราคาซื้อ (บาท)" type="number" value={form.purchasePrice} onChange={e => setForm(p => ({ ...p, purchasePrice: e.target.value }))} placeholder="0" />
+                                <Input label="หน่วยที่ซื้อ" value={form.purchaseUnit} onChange={e => setForm(p => ({ ...p, purchaseUnit: e.target.value }))} placeholder="kg, ขวด, ลัง" />
+                            </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                                <Input label="หน่วยในสูตร" value={form.recipeUnit} onChange={e => setForm(p => ({ ...p, recipeUnit: e.target.value }))} placeholder="g, ml, ฟอง" />
+                                <Input label="Conversion Factor" type="number" value={form.conversionFactor} onChange={e => setForm(p => ({ ...p, conversionFactor: e.target.value }))} placeholder="1000" />
+                            </div>
+                            <Input label="Yield % (เปอร์เซ็นต์ส่วนที่ใช้ได้จริง)" type="number" value={form.yieldPct} onChange={e => setForm(p => ({ ...p, yieldPct: e.target.value }))} placeholder="100" />
+
+                            {form.purchasePrice && form.conversionFactor && form.yieldPct && (
+                                <div style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 8, padding: "0.75rem 1rem", marginBottom: 16, fontSize: "0.8rem" }}>
+                                    <span style={{ color: "#94a3b8" }}>ต้นทุนต่อหน่วย: </span>
+                                    <span style={{ color: "#f59e0b", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>
+                                        ฿{((parseFloat(form.purchasePrice) / parseFloat(form.conversionFactor)) / (parseFloat(form.yieldPct) / 100)).toFixed(4)} / {form.recipeUnit || "หน่วย"}
+                                    </span>
+                                </div>
+                            )}
+
+                            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                                <Btn variant="ghost" onClick={() => setShowModal(false)}>ยกเลิก</Btn>
+                                <Btn onClick={save}>{editItem ? "บันทึก" : "เพิ่มวัตถุดิบ"}</Btn>
+                            </div>
+                        </Modal>
+                    )}
+                </div>
+            );
+        }
+
+        function RecipesPage({ ingredients, recipes, setRecipes }) {
+            const [selected, setSelected] = useState(recipes[0]?.id || null);
+            const [showNew, setShowNew] = useState(false);
+            const [newName, setNewName] = useState("");
+            const [addIngId, setAddIngId] = useState("");
+            const [addQty, setAddQty] = useState("100");
+
+            // อัปเดต addIngId ทันทีที่มีวัตถุดิบโหลดเข้ามา
+            useEffect(() => {
+                if(ingredients.length > 0 && !addIngId) setAddIngId(ingredients[0].id);
+                if(recipes.length > 0 && !selected) setSelected(recipes[0].id);
+            }, [ingredients, recipes]);
+
+            const recipe = recipes.find(r => r.id === selected);
+            const totalCost = recipe ? calcRecipeCost(recipe, ingredients) / recipe.servings : 0;
+
+            // 🚀 อัปเกรด: สร้างสูตรอาหารเข้า Database
+            async function createRecipe() {
+                if (!newName.trim()) return;
+                const { data: inserted } = await supabaseClient.from('recipes').insert([{ name: newName, servings: 1 }]).select().single();
+                if(inserted) {
+                    const r = { ...inserted, items: [] };
+                    setRecipes(prev => [...prev, r]);
+                    setSelected(r.id);
+                }
+                setShowNew(false);
+                setNewName("");
+            }
+
+            // 🚀 อัปเกรด: เพิ่มส่วนผสมเข้า Database
+            async function addItem() {
+                const id = parseInt(addIngId);
+                const qty = parseFloat(addQty);
+                if (!id || !qty) return;
+                
+                const existing = recipe.items.find(i => i.ingredientId === id);
+                if(existing) {
+                    const { data } = await supabaseClient.from('recipe_items').update({ qty: existing.qty + qty }).eq('id', existing.id).select().single();
+                    if(data) setRecipes(prev => prev.map(r => r.id === selected ? { ...r, items: r.items.map(i => i.id === data.id ? data : i) } : r));
+                } else {
+                    const { data } = await supabaseClient.from('recipe_items').insert([{ recipeId: selected, ingredientId: id, qty }]).select().single();
+                    if(data) setRecipes(prev => prev.map(r => r.id === selected ? { ...r, items: [...r.items, data] } : r));
+                }
+            }
+
+            // 🚀 อัปเกรด: ลบส่วนผสม
+            async function removeItem(riId) {
+                await supabaseClient.from('recipe_items').delete().eq('id', riId);
+                setRecipes(prev => prev.map(r => r.id === selected ? { ...r, items: r.items.filter(i => i.id !== riId) } : r));
+            }
+
+            // 🚀 อัปเกรด: อัปเดตปริมาณส่วนผสม
+            async function updateQty(riId, val) {
+                const qty = parseFloat(val) || 0;
+                const { data } = await supabaseClient.from('recipe_items').update({ qty }).eq('id', riId).select().single();
+                if(data) setRecipes(prev => prev.map(r => r.id === selected ? { ...r, items: r.items.map(i => i.id === riId ? data : i) } : r));
+            }
+
+            // 🚀 อัปเกรด: ลบสูตรอาหารทั้งหมด
+            async function deleteRecipe() {
+                if(!confirm("ต้องการลบสูตรอาหารนี้ใช่ไหม? (เมนูที่ผูกอยู่จะได้รับผลกระทบ)")) return;
+                await supabaseClient.from('recipes').delete().eq('id', selected);
+                setRecipes(prev => prev.filter(r => r.id !== selected));
+                setSelected(null);
+            }
+
+            return (
+                <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 18, height: "calc(100vh - 120px)" }}>
+                    {/* Sidebar list */}
+                    <div style={{ background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+                        <div style={{ padding: "1rem", borderBottom: "1px solid #2a2a45", fontSize: "0.75rem", color: "#6b7280", letterSpacing: "0.08em", textTransform: "uppercase" }}>สูตรอาหาร</div>
+                        <div style={{ flex: 1, overflow: "auto" }}>
+                            {recipes.length === 0 && <div style={{padding: '1rem', color: '#6b7280', fontSize: '0.8rem'}}>ยังไม่มีสูตรอาหาร</div>}
+                            {recipes.map(r => {
+                                const cost = calcRecipeCost(r, ingredients) / r.servings;
+                                return (
+                                    <div key={r.id} onClick={() => setSelected(r.id)} style={{ padding: "0.8rem 1rem", cursor: "pointer", borderBottom: "1px solid #1e1e35", background: selected === r.id ? "rgba(245,158,11,0.1)" : "transparent", borderLeft: selected === r.id ? "3px solid #f59e0b" : "3px solid transparent" }}>
+                                        <div style={{ fontSize: "0.82rem", color: selected === r.id ? "#f59e0b" : "#e2e8f0", fontWeight: 500 }}>{r.name}</div>
+                                        <div style={{ fontSize: "0.7rem", color: "#6b7280", marginTop: 2, fontFamily: "'JetBrains Mono', monospace" }}>฿{cost.toFixed(2)}/serving</div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <div style={{ padding: "0.75rem" }}>
+                            {showNew ? (
+                                <div>
+                                    <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="ชื่อสูตรอาหาร" onKeyDown={e => e.key === "Enter" && createRecipe()} style={{ width: "100%", background: "#12121f", border: "1px solid #2a2a45", borderRadius: 8, padding: "0.5rem", color: "#f1f5f9", fontSize: "0.8rem", fontFamily: "'Sora', sans-serif", marginBottom: 6, boxSizing: "border-box" }} />
+                                    <div style={{ display: "flex", gap: 6 }}>
+                                        <Btn onClick={createRecipe} style={{ flex: 1, padding: "0.4rem" }}>สร้าง</Btn>
+                                        <Btn variant="ghost" onClick={() => setShowNew(false)} style={{ padding: "0.4rem 0.6rem" }}>×</Btn>
+                                    </div>
+                                </div>
+                            ) : (
+                                <Btn onClick={() => setShowNew(true)} style={{ width: "100%", textAlign: "center" }}>+ สูตรใหม่</Btn>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Recipe detail */}
+                    {recipe ? (
+                        <div style={{ background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+                            <div style={{ padding: "1rem 1.5rem", borderBottom: "1px solid #2a2a45", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                <div style={{ display: "flex", gap: 10, alignItems: "center"}}>
+                                    <div style={{ fontSize: "1.1rem", fontWeight: 600, color: "#f1f5f9" }}>{recipe.name}</div>
+                                    <button onClick={deleteRecipe} style={{background: 'transparent', border: 'none', color: '#ef4444', fontSize: '0.7rem', cursor: 'pointer', padding: '4px'}}>🗑️ ลบสูตร</button>
+                                </div>
+                                <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+                                    <div style={{ textAlign: "right" }}>
+                                        <div style={{ fontSize: "0.65rem", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>ต้นทุนต่อ serving</div>
+                                        <div style={{ fontSize: "1.3rem", fontWeight: 700, color: "#f59e0b", fontFamily: "'JetBrains Mono', monospace" }}>฿{totalCost.toFixed(2)}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{ flex: 1, overflow: "auto", padding: "1rem 1.5rem" }}>
+                                {recipe.items.length === 0 && (
+                                    <div style={{ textAlign: "center", padding: "3rem", color: "#6b7280", fontSize: "0.85rem" }}>ยังไม่มีวัตถุดิบ — เพิ่มด้านล่างได้เลย</div>
+                                )}
+                                {recipe.items.map(item => {
+                                    const ing = ingredients.find(i => i.id === item.ingredientId);
+                                    if (!ing) return null;
+                                    const lineCost = calcCostPerUnit(ing) * item.qty;
+                                    return (
+                                        <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "0.65rem 0", borderBottom: "1px solid #1e1e35" }}>
+                                            <div style={{ width: 10, height: 10, borderRadius: "50%", background: CAT_COLORS[ing.category], flexShrink: 0 }} />
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ fontSize: "0.85rem", color: "#e2e8f0", fontWeight: 500 }}>{ing.name}</div>
+                                                <div style={{ fontSize: "0.7rem", color: "#6b7280" }}>{ing.category} · ฿{calcCostPerUnit(ing).toFixed(4)}/{ing.recipeUnit}</div>
+                                            </div>
+                                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                                {/* ใช้ item.id ซึ่งเป็น PK จาก DB */}
+                                                <input type="number" value={item.qty} onChange={e => updateQty(item.id, e.target.value)} style={{ width: 70, background: "#12121f", border: "1px solid #2a2a45", borderRadius: 6, padding: "4px 8px", color: "#f1f5f9", fontSize: "0.8rem", fontFamily: "'JetBrains Mono', monospace", textAlign: "right" }} />
+                                                <span style={{ fontSize: "0.72rem", color: "#6b7280", width: 25 }}>{ing.recipeUnit}</span>
+                                            </div>
+                                            <div style={{ fontSize: "0.82rem", color: "#f59e0b", fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, width: 70, textAlign: "right" }}>฿{lineCost.toFixed(3)}</div>
+                                            <button onClick={() => removeItem(item.id)} style={{ background: "transparent", border: "none", color: "#4b5563", cursor: "pointer", fontSize: "1rem", padding: "0 4px" }}>×</button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Add ingredient bar */}
+                            <div style={{ padding: "1rem 1.5rem", borderTop: "1px solid #2a2a45", background: "#12121f" }}>
+                                <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontSize: "0.68rem", color: "#6b7280", marginBottom: 5 }}>เลือกวัตถุดิบ</div>
+                                        <select value={addIngId} onChange={e => setAddIngId(e.target.value)} style={{ width: "100%", background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 8, padding: "0.5rem 0.75rem", color: "#f1f5f9", fontSize: "0.82rem", fontFamily: "'Sora', sans-serif" }}>
+                                            {ingredients.length === 0 && <option value="">กรุณาเพิ่มวัตถุดิบก่อน</option>}
+                                            {ingredients.map(ing => <option key={ing.id} value={ing.id}>{ing.name} ({ing.recipeUnit})</option>)}
+                                        </select>
+                                    </div>
+                                    <div style={{ width: 90 }}>
+                                        <div style={{ fontSize: "0.68rem", color: "#6b7280", marginBottom: 5 }}>ปริมาณ</div>
+                                        <input type="number" value={addQty} onChange={e => setAddQty(e.target.value)} style={{ width: "100%", background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 8, padding: "0.5rem 0.75rem", color: "#f1f5f9", fontSize: "0.82rem", fontFamily: "'JetBrains Mono', monospace" }} />
+                                    </div>
+                                    <Btn onClick={addItem}>+ เพิ่ม</Btn>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", color: "#6b7280", fontSize: "0.9rem", border: "1px dashed #2a2a45", borderRadius: 12 }}>เลือก หรือสร้างสูตรอาหารใหม่ด้านซ้ายมือครับ</div>
+                    )}
+                </div>
+            );
+        }
+
+        function MenuPage({ ingredients, recipes, menu, setMenu }) {
+            const [showModal, setShowModal] = useState(false);
+            const [form, setForm] = useState({ name: "", recipeId: "", price: "" });
+
+            useEffect(() => {
+                if(recipes.length > 0 && !form.recipeId) setForm(p => ({...p, recipeId: recipes[0].id}));
+            }, [recipes]);
+
+            const menuWithCosts = menu.map(item => {
+                const recipe = recipes.find(r => r.id === item.recipeId);
+                const cost = recipe ? calcRecipeCost(recipe, ingredients) / recipe.servings : 0;
+                const pct = item.price > 0 ? (cost / item.price) * 100 : 0;
+                const profit = item.price - cost;
+                const suggested = cost > 0 ? cost / 0.32 : 0;
+                return { ...item, cost, pct, profit, suggested };
+            });
+
+            // 🚀 อัปเกรด: บันทึกเมนูลง Database
+            async function save() {
+                const data = { name: form.name, recipeId: parseInt(form.recipeId), price: parseFloat(form.price) };
+                const { data: inserted } = await supabaseClient.from('menus').insert([data]).select().single();
+                if(inserted) setMenu(prev => [...prev, inserted]);
+                setShowModal(false);
+                setForm({ name: "", recipeId: recipes[0]?.id || "", price: "" });
+            }
+
+            // 🚀 อัปเกรด: ลบเมนูจาก Database
+            async function delMenu(id) {
+                await supabaseClient.from('menus').delete().eq('id', id);
+                setMenu(prev => prev.filter(m => m.id !== id));
+            }
+
+            const previewCost = (() => {
+                const r = recipes.find(r => r.id === parseInt(form.recipeId));
+                return r ? calcRecipeCost(r, ingredients) / r.servings : 0;
+            })();
+            const previewFc = form.price > 0 ? (previewCost / parseFloat(form.price)) * 100 : 0;
+
+            return (
+                <div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+                        <div>
+                            <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#f1f5f9" }}>เมนูอาหาร</div>
+                            <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>ตั้งราคาขายและดู Food Cost %</div>
+                        </div>
+                        <Btn onClick={() => setShowModal(true)}>+ เพิ่มเมนู</Btn>
+                    </div>
+
+                    <div style={{ display: "grid", gap: 12 }}>
+                        {menuWithCosts.length === 0 && <div style={{color: '#6b7280', fontSize: '0.9rem', textAlign: 'center', padding: '2rem'}}>ยังไม่มีข้อมูลเมนูหน้าร้าน</div>}
+                        {menuWithCosts.map(item => (
+                            <div key={item.id} style={{ background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 12, padding: "1.25rem 1.5rem", display: "flex", alignItems: "center", gap: 20 }}>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: "1rem", fontWeight: 600, color: "#f1f5f9", marginBottom: 4 }}>{item.name}</div>
+                                    <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>Recipe: {recipes.find(r => r.id === item.recipeId)?.name || "-"}</div>
+                                </div>
+
+                                <div style={{ textAlign: "center" }}>
+                                    <div style={{ fontSize: "0.65rem", color: "#6b7280", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.07em" }}>ต้นทุน</div>
+                                    <div style={{ fontSize: "1.1rem", fontWeight: 600, color: "#e2e8f0", fontFamily: "'JetBrains Mono', monospace" }}>฿{item.cost.toFixed(2)}</div>
+                                </div>
+
+                                <div style={{ textAlign: "center" }}>
+                                    <div style={{ fontSize: "0.65rem", color: "#6b7280", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.07em" }}>ราคาขาย</div>
+                                    <div style={{ fontSize: "1.1rem", fontWeight: 600, color: "#38bdf8", fontFamily: "'JetBrains Mono', monospace" }}>฿{item.price.toFixed(0)}</div>
+                                </div>
+
+                                <div style={{ textAlign: "center" }}>
+                                    <div style={{ fontSize: "0.65rem", color: "#6b7280", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.07em" }}>กำไรขั้นต้น</div>
+                                    <div style={{ fontSize: "1.1rem", fontWeight: 600, color: "#22c55e", fontFamily: "'JetBrains Mono', monospace" }}>฿{item.profit.toFixed(2)}</div>
+                                </div>
+
+                                <div style={{ textAlign: "center", minWidth: 80 }}>
+                                    <div style={{ fontSize: "0.65rem", color: "#6b7280", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.07em" }}>Food Cost</div>
+                                    <div style={{ background: fcBg(item.pct), border: `1px solid ${fcColor(item.pct)}40`, borderRadius: 8, padding: "4px 12px", display: "inline-block" }}>
+                                        <span style={{ fontSize: "1.2rem", fontWeight: 700, color: fcColor(item.pct), fontFamily: "'JetBrains Mono', monospace" }}>{item.pct.toFixed(1)}%</span>
+                                    </div>
+                                    {item.pct > 38 && <div style={{ fontSize: "0.65rem", color: "#f59e0b", marginTop: 4 }}>แนะนำ ฿{item.suggested.toFixed(0)}+</div>}
+                                </div>
+
+                                <div>
+                                    <div style={{ width: 120 }}>
+                                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.6rem", color: "#6b7280", marginBottom: 4 }}>
+                                            <span>0%</span><span>35%</span><span>50%+</span>
+                                        </div>
+                                        <div style={{ height: 8, background: "#2a2a45", borderRadius: 4, position: "relative" }}>
+                                            <div style={{ position: "absolute", left: "35%", top: -1, width: 1, height: 10, background: "#f59e0b", opacity: 0.5 }} />
+                                            <div style={{ height: "100%", width: `${Math.min(item.pct * 2, 100)}%`, background: `linear-gradient(to right, #22c55e, ${fcColor(item.pct)})`, borderRadius: 4 }} />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button onClick={() => delMenu(item.id)} style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", borderRadius: 8, padding: "6px 10px", cursor: "pointer", fontSize: "0.72rem" }}>ลบ</button>
+                            </div>
+                        ))}
+                    </div>
+
+                    {showModal && (
+                        <Modal title="เพิ่มเมนูใหม่" onClose={() => setShowModal(false)}>
+                            <Input label="ชื่อเมนู (ที่แสดงในราคา)" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="เช่น ข้าวผัดกระเพราหมู + ไข่ดาว" />
+                            <Select label="เลือก Recipe" value={form.recipeId} onChange={e => setForm(p => ({ ...p, recipeId: e.target.value }))}>
+                                {recipes.length === 0 && <option value="">กรุณาสร้างสูตรอาหารก่อน</option>}
+                                {recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                            </Select>
+                            <Input label="ราคาขาย (บาท)" type="number" value={form.price} onChange={e => setForm(p => ({ ...p, price: e.target.value }))} placeholder="0" />
+
+                            {form.price > 0 && previewCost > 0 && (
+                                <div style={{ background: fcBg(previewFc), border: `1px solid ${fcColor(previewFc)}30`, borderRadius: 10, padding: "1rem", marginBottom: 16 }}>
+                                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, textAlign: "center" }}>
+                                        <div><div style={{ fontSize: "0.65rem", color: "#6b7280", marginBottom: 4 }}>ต้นทุน</div><div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: "#e2e8f0" }}>฿{previewCost.toFixed(2)}</div></div>
+                                        <div><div style={{ fontSize: "0.65rem", color: "#6b7280", marginBottom: 4 }}>กำไรขั้นต้น</div><div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: "#22c55e" }}>฿{(parseFloat(form.price) - previewCost).toFixed(2)}</div></div>
+                                        <div><div style={{ fontSize: "0.65rem", color: "#6b7280", marginBottom: 4 }}>Food Cost %</div><div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: fcColor(previewFc), fontSize: "1.2rem" }}>{previewFc.toFixed(1)}%</div></div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                                <Btn variant="ghost" onClick={() => setShowModal(false)}>ยกเลิก</Btn>
+                                <Btn onClick={save}>เพิ่มเมนู</Btn>
+                            </div>
+                        </Modal>
+                    )}
+                </div>
+            );
+        }
+
+        // ─── ROOT ────────────────────────────────────────────────────────────────────
+        export default function App() {
+            const [tab, setTab] = useState("ingredients"); // เริ่มต้นที่หน้าวัตถุดิบเพราะฐานข้อมูลเพิ่งสร้างใหม่
+            const [ingredients, setIngredients] = useState([]);
+            const [recipes, setRecipes] = useState([]);
+            const [menu, setMenu] = useState([]);
+            const [loadingDb, setLoadingDb] = useState(true);
+
+            // 🚀 อัปเกรด: โหลดข้อมูลจาก Supabase ตอนเปิดแอป
+            useEffect(() => {
+                async function loadData() {
+                    try {
+                        const [ingRes, recRes, riRes, menuRes] = await Promise.all([
+                            supabaseClient.from('ingredients').select('*').order('id'),
+                            supabaseClient.from('recipes').select('*').order('id'),
+                            supabaseClient.from('recipe_items').select('*'),
+                            supabaseClient.from('menus').select('*').order('id')
+                        ]);
+
+                        setIngredients(ingRes.data || []);
+                        
+                        const formattedRecipes = (recRes.data || []).map(r => ({
+                            ...r,
+                            items: (riRes.data || []).filter(ri => ri.recipeId === r.id)
+                        }));
+                        setRecipes(formattedRecipes);
+                        setMenu(menuRes.data || []);
+                    } catch (err) {
+                        console.error("Error loading data from Supabase:", err);
+                    } finally {
+                        setLoadingDb(false);
+                    }
+                }
+                loadData();
+            }, []);
+
+            const navItems = [
+                { id: "dashboard", label: "Dashboard", icon: "◈" },
+                { id: "ingredients", label: "วัตถุดิบ", icon: "⊡" },
+                { id: "recipes", label: "สูตรอาหาร", icon: "⋮⋮" },
+                { id: "menu", label: "เมนู", icon: "◫" },
+            ];
+
+            const menuWithCosts = menu.map(item => {
+                const recipe = recipes.find(r => r.id === item.recipeId);
+                const cost = recipe ? calcRecipeCost(recipe, ingredients) / recipe.servings : 0;
+                const pct = item.price > 0 ? (cost / item.price) * 100 : 0;
+                return pct;
+            });
+            const avgFc = menuWithCosts.length ? menuWithCosts.reduce((a, b) => a + b, 0) / menuWithCosts.length : 0;
+
+            if (loadingDb) {
+                return <div style={{ height: "100vh", background: "#0d0d1a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#f59e0b", fontFamily: "'Sora', sans-serif" }}>
+                    <div style={{ fontSize: "2rem", marginBottom: 10 }}>🍜</div>
+                    <div>กำลังเชื่อมต่อระบบหลังบ้าน Supabase...</div>
+                </div>;
+            }
+
+            return (
+                <>
+                    <style>{FONTS}</style>
+                    <style>{`
+                        * { box-sizing: border-box; }
+                        body { margin: 0; background: #0d0d1a; }
+                        ::-webkit-scrollbar { width: 4px; height: 4px; }
+                        ::-webkit-scrollbar-track { background: transparent; }
+                        ::-webkit-scrollbar-thumb { background: #2a2a45; border-radius: 4px; }
+                        input:focus, select:focus { border-color: #f59e0b !important; box-shadow: 0 0 0 2px rgba(245,158,11,0.15); }
+                    `}</style>
+                    <div style={{ display: "flex", height: "100vh", background: "#0d0d1a", fontFamily: "'Sora', sans-serif", color: "#f1f5f9", overflow: "hidden" }}>
+
+                        {/* Sidebar */}
+                        <div style={{ width: 220, background: "#12121f", borderRight: "1px solid #1e1e35", display: "flex", flexDirection: "column", flexShrink: 0 }}>
+                            {/* Logo */}
+                            <div style={{ padding: "1.5rem 1.25rem 1rem", borderBottom: "1px solid #1e1e35" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                                    <div style={{ background: "linear-gradient(135deg, #f59e0b, #f97316)", width: 34, height: 34, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0 }}>🍜</div>
+                                    <div>
+                                        <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "#f1f5f9" }}>FoodCost</div>
+                                        <div style={{ fontSize: "0.65rem", color: "#22c55e", fontFamily: "'JetBrains Mono', monospace" }}>🟢 Supabase Connected</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Nav */}
+                            <nav style={{ padding: "0.75rem 0.75rem", flex: 1 }}>
+                                {navItems.map(item => (
+                                    <button key={item.id} onClick={() => setTab(item.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "0.65rem 0.75rem", borderRadius: 8, border: "none", cursor: "pointer", marginBottom: 2, background: tab === item.id ? "rgba(245,158,11,0.12)" : "transparent", color: tab === item.id ? "#f59e0b" : "#6b7280", fontSize: "0.85rem", fontFamily: "'Sora', sans-serif", fontWeight: tab === item.id ? 600 : 400, transition: "all 0.15s", textAlign: "left" }}>
+                                        <span style={{ fontSize: "0.9rem", opacity: 0.8 }}>{item.icon}</span>
+                                        {item.label}
+                                    </button>
+                                ))}
+                            </nav>
+
+                            {/* Bottom status */}
+                            <div style={{ padding: "1rem 1.25rem", borderTop: "1px solid #1e1e35" }}>
+                                <div style={{ fontSize: "0.65rem", color: "#6b7280", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>Avg Food Cost</div>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <div style={{ flex: 1, height: 4, background: "#1e1e35", borderRadius: 2 }}>
+                                        <div style={{ height: "100%", width: `${Math.min(avgFc, 100)}%`, background: avgFc <= 35 ? "#22c55e" : avgFc <= 40 ? "#f59e0b" : "#ef4444", borderRadius: 2, transition: "width 0.5s" }} />
+                                    </div>
+                                    <span style={{ fontSize: "0.78rem", fontFamily: "'JetBrains Mono', monospace", color: avgFc <= 35 ? "#22c55e" : avgFc <= 40 ? "#f59e0b" : "#ef4444", fontWeight: 600 }}>{avgFc.toFixed(1)}%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Main content */}
+                        <div style={{ flex: 1, overflow: "auto", padding: "2rem" }}>
+                            {tab === "dashboard" && <Dashboard ingredients={ingredients} recipes={recipes} menu={menu} />}
+                            {tab === "ingredients" && <IngredientsPage ingredients={ingredients} setIngredients={setIngredients} />}
+                            {tab === "recipes" && <RecipesPage ingredients={ingredients} recipes={recipes} setRecipes={setRecipes} />}
+                            {tab === "menu" && <MenuPage ingredients={ingredients} recipes={recipes} menu={menu} setMenu={setMenu} />}
+                        </div>
+                    </div>
+                </>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
