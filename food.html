@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Food Cost - Powered by Supabase</title>
     <link rel="apple-touch-icon" href="https://emojicdn.elk.sh/🍜">
     <link rel="icon" href="https://emojicdn.elk.sh/🍜">
@@ -15,7 +15,6 @@
 </head>
 <body>
     <div id="error-log" style="color: #ff6b6b; padding: 20px; font-family: sans-serif; display: none; background: #2a0808; height: 100vh;"></div>
-    
     <div id="root"></div>
 
     <script>
@@ -26,7 +25,6 @@
     </script>
 
     <script type="text/babel">
-        // 🚀 เพิ่ม useRef เข้ามาสำหรับทำระบบคลิกนอกกรอบเพื่อปิดเมนู
         const { useState, useEffect, useMemo, useRef } = React;
 
         const FONTS = "@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');";
@@ -69,7 +67,6 @@
 
         // ─── COMPONENTS ─────────────────────────────────────────────────────────────
         
-        // 🌟 กล่องค้นหาอัจฉริยะ (New Component)
         function SearchableSelect({ options, value, onChange }) {
             const [isOpen, setIsOpen] = useState(false);
             const [search, setSearch] = useState("");
@@ -121,7 +118,7 @@
                                     padding: "0.75rem", color: "#f1f5f9", fontSize: "0.85rem", outline: "none", width: "100%", fontFamily: "'Sora', sans-serif"
                                 }}
                             />
-                            <div style={{ maxHeight: "250px", overflowY: "auto" }}>
+                            <div style={{ maxHeight: "200px", overflowY: "auto" }}>
                                 {filteredOptions.length === 0 && <div style={{ padding: "1rem", color: "#6b7280", fontSize: "0.8rem", textAlign: "center" }}>ไม่พบวัตถุดิบนี้</div>}
                                 {filteredOptions.map(o => (
                                     <div
@@ -136,8 +133,6 @@
                                             background: value == o.id ? "rgba(245,158,11,0.1)" : "transparent",
                                             borderLeft: value == o.id ? "3px solid #f59e0b" : "3px solid transparent"
                                         }}
-                                        onMouseEnter={e => { if(value != o.id) e.currentTarget.style.background = "#1a1a2e" }}
-                                        onMouseLeave={e => { if(value != o.id) e.currentTarget.style.background = "transparent" }}
                                     >
                                         {o.name} <span style={{ color: "#6b7280", fontSize: "0.7rem" }}>({o.recipeUnit})</span>
                                     </div>
@@ -162,13 +157,13 @@
 
         function Modal({ title, onClose, children }) {
             return (
-                <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-                    <div style={{ background: "#12121f", border: "1px solid #2a2a45", borderRadius: 16, width: "100%", maxWidth: 520, maxHeight: "90vh", overflow: "auto", boxShadow: "0 25px 80px rgba(0,0,0,0.6)" }}>
-                        <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #1e1e35", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <div style={{ fontWeight: 600, fontSize: "1rem", color: "#f1f5f9" }}>{title}</div>
-                            <button onClick={onClose} style={{ background: "#1e1e35", border: "none", color: "#94a3b8", width: 30, height: 30, borderRadius: 8, cursor: "pointer", fontSize: "1rem", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="bg-[#12121f] border border-[#2a2a45] rounded-2xl w-full max-w-[520px] max-h-[85vh] overflow-auto shadow-2xl">
+                        <div className="p-4 md:p-5 border-b border-[#1e1e35] flex items-center justify-between sticky top-0 bg-[#12121f] z-10">
+                            <div className="font-semibold text-[1rem] text-[#f1f5f9]">{title}</div>
+                            <button onClick={onClose} className="bg-[#1e1e35] border-none text-[#94a3b8] w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer text-lg">×</button>
                         </div>
-                        <div style={{ padding: "1.5rem" }}>{children}</div>
+                        <div className="p-4 md:p-6">{children}</div>
                     </div>
                 </div>
             );
@@ -176,32 +171,32 @@
 
         function Input({ label, ...props }) {
             return (
-                <div style={{ marginBottom: 14 }}>
-                    {label && <div style={{ fontSize: "0.72rem", color: "#94a3b8", marginBottom: 6, letterSpacing: "0.05em" }}>{label}</div>}
-                    <input {...props} style={{ width: "100%", background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 8, padding: "0.55rem 0.75rem", color: "#f1f5f9", fontSize: "0.85rem", fontFamily: "'Sora', sans-serif", outline: "none", ...props.style }} />
+                <div className="mb-3.5">
+                    {label && <div className="text-[0.72rem] text-[#94a3b8] mb-1.5 tracking-wide">{label}</div>}
+                    <input {...props} className="w-full bg-[#1a1a2e] border border-[#2a2a45] rounded-lg py-2.5 px-3 text-[#f1f5f9] text-[0.85rem] font-['Sora'] outline-none focus:border-[#f59e0b] focus:ring-1 focus:ring-[#f59e0b] transition-all" />
                 </div>
             );
         }
 
         function Select({ label, children, ...props }) {
             return (
-                <div style={{ marginBottom: 14 }}>
-                    {label && <div style={{ fontSize: "0.72rem", color: "#94a3b8", marginBottom: 6 }}>{label}</div>}
-                    <select {...props} style={{ width: "100%", background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 8, padding: "0.55rem 0.75rem", color: "#f1f5f9", fontSize: "0.85rem", fontFamily: "'Sora', sans-serif", outline: "none" }}>
+                <div className="mb-3.5">
+                    {label && <div className="text-[0.72rem] text-[#94a3b8] mb-1.5 tracking-wide">{label}</div>}
+                    <select {...props} className="w-full bg-[#1a1a2e] border border-[#2a2a45] rounded-lg py-2.5 px-3 text-[#f1f5f9] text-[0.85rem] font-['Sora'] outline-none focus:border-[#f59e0b] focus:ring-1 focus:ring-[#f59e0b] transition-all appearance-none">
                         {children}
                     </select>
                 </div>
             );
         }
 
-        function Btn({ children, onClick, variant = "primary", style = {} }) {
-            const base = { border: "none", borderRadius: 8, padding: "0.55rem 1.25rem", cursor: "pointer", fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: "0.82rem", transition: "opacity 0.15s" };
+        function Btn({ children, onClick, variant = "primary", style = {}, className = "" }) {
+            const base = "border-none rounded-lg py-2.5 px-5 cursor-pointer font-['Sora'] font-semibold text-[0.82rem] transition-all active:scale-95 flex justify-center items-center ";
             const variants = {
-                primary: { background: "linear-gradient(135deg, #f59e0b, #f97316)", color: "#0f0f1a" },
-                ghost: { background: "#1e1e35", color: "#94a3b8", border: "1px solid #2a2a45" },
-                danger: { background: "rgba(239,68,68,0.2)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)" },
+                primary: "bg-gradient-to-br from-[#f59e0b] to-[#f97316] text-[#0f0f1a] shadow-lg shadow-orange-500/20",
+                ghost: "bg-[#1e1e35] text-[#94a3b8] border border-[#2a2a45]",
+                danger: "bg-red-500/10 text-red-500 border border-red-500/30",
             };
-            return <button onClick={onClick} style={{ ...base, ...variants[variant], ...style }}>{children}</button>;
+            return <button onClick={onClick} className={base + variants[variant] + " " + className} style={style}>{children}</button>;
         }
 
         // ─── PAGES ──────────────────────────────────────────────────────────────────
@@ -218,47 +213,47 @@
             const topCostIng = [...ingredients].sort((a, b) => calcCostPerUnit(b) - calcCostPerUnit(a)).slice(0, 5);
 
             return (
-                <div>
-                    <div style={{ marginBottom: "2rem" }}>
-                        <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#f1f5f9", marginBottom: 4 }}>Overview</div>
-                        <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>ภาพรวม Food Cost ของร้านคุณ</div>
+                <div className="pb-10">
+                    <div className="mb-6">
+                        <div className="text-2xl font-bold text-[#f1f5f9] mb-1">Overview</div>
+                        <div className="text-sm text-[#6b7280]">ภาพรวม Food Cost ของร้านคุณ</div>
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: "2rem" }}>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-8">
                         <StatCard label="Avg Food Cost" value={`${avgFc.toFixed(1)}%`} sub={avgFc === 0 ? "เพิ่มเมนูก่อน" : avgFc <= 35 ? "✓ อยู่ในเกณฑ์ดี" : "⚠ สูงเกินเกณฑ์"} accent={avgFc <= 35 ? "#22c55e" : "#ef4444"} />
                         <StatCard label="เมนูทั้งหมด" value={menu.length} sub={`${highFcItems} เมนูต้นทุนสูง`} accent="#f59e0b" />
                         <StatCard label="วัตถุดิบ" value={ingredients.length} sub="รายการในระบบ" accent="#38bdf8" />
                         <StatCard label="สูตรอาหาร" value={recipes.length} sub="recipe ทั้งหมด" accent="#a78bfa" />
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
-                        <div style={{ background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 12, padding: "1.25rem" }}>
-                            <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginBottom: 14, letterSpacing: "0.08em", textTransform: "uppercase" }}>Food Cost % รายเมนู</div>
-                            {menuWithCosts.length === 0 && <div style={{color: "#6b7280", fontSize: "0.8rem"}}>ยังไม่มีข้อมูลเมนู</div>}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+                        <div className="bg-[#1a1a2e] border border-[#2a2a45] rounded-xl p-4 md:p-5">
+                            <div className="text-xs text-[#94a3b8] mb-4 tracking-widest uppercase">Food Cost % รายเมนู</div>
+                            {menuWithCosts.length === 0 && <div className="text-[#6b7280] text-sm">ยังไม่มีข้อมูลเมนู</div>}
                             {menuWithCosts.map(item => (
-                                <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                                    <div style={{ flex: 1, fontSize: "0.82rem", color: "#e2e8f0" }}>{item.name}</div>
-                                    <div style={{ width: 100 }}>
-                                        <div style={{ height: 6, background: "#2a2a45", borderRadius: 3 }}>
-                                            <div style={{ height: "100%", width: `${Math.min(item.pct, 100)}%`, background: fcColor(item.pct), borderRadius: 3, transition: "width 0.5s" }} />
+                                <div key={item.id} className="flex items-center gap-3 mb-3">
+                                    <div className="flex-1 text-sm text-[#e2e8f0] truncate">{item.name}</div>
+                                    <div className="w-[60px] md:w-[100px] hidden sm:block">
+                                        <div className="h-1.5 bg-[#2a2a45] rounded-full">
+                                            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(item.pct, 100)}%`, background: fcColor(item.pct) }} />
                                         </div>
                                     </div>
-                                    <div style={{ fontSize: "0.78rem", fontFamily: "'JetBrains Mono', monospace", color: fcColor(item.pct), width: 42, textAlign: "right", fontWeight: 600 }}>{item.pct.toFixed(1)}%</div>
+                                    <div className="text-[0.78rem] font-['JetBrains_Mono'] text-right font-semibold w-[45px]" style={{ color: fcColor(item.pct) }}>{item.pct.toFixed(1)}%</div>
                                 </div>
                             ))}
                         </div>
 
-                        <div style={{ background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 12, padding: "1.25rem" }}>
-                            <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginBottom: 14, letterSpacing: "0.08em", textTransform: "uppercase" }}>Top 5 วัตถุดิบต้นทุนสูง</div>
-                            {topCostIng.length === 0 && <div style={{color: "#6b7280", fontSize: "0.8rem"}}>ยังไม่มีข้อมูลวัตถุดิบ</div>}
+                        <div className="bg-[#1a1a2e] border border-[#2a2a45] rounded-xl p-4 md:p-5">
+                            <div className="text-xs text-[#94a3b8] mb-4 tracking-widest uppercase">Top 5 วัตถุดิบต้นทุนสูง</div>
+                            {topCostIng.length === 0 && <div className="text-[#6b7280] text-sm">ยังไม่มีข้อมูลวัตถุดิบ</div>}
                             {topCostIng.map((ing, i) => (
-                                <div key={ing.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                                    <div style={{ width: 22, height: 22, borderRadius: 6, background: "#2a2a45", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", fontFamily: "'JetBrains Mono', monospace", color: "#94a3b8" }}>{i + 1}</div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontSize: "0.82rem", color: "#e2e8f0" }}>{ing.name}</div>
-                                        <div style={{ fontSize: "0.68rem", color: "#6b7280" }}>{ing.category}</div>
+                                <div key={ing.id} className="flex items-center gap-3 mb-3">
+                                    <div className="w-6 h-6 rounded bg-[#2a2a45] flex items-center justify-center text-[0.65rem] font-['JetBrains_Mono'] text-[#94a3b8] flex-shrink-0">{i + 1}</div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-sm text-[#e2e8f0] truncate">{ing.name}</div>
+                                        <div className="text-[0.68rem] text-[#6b7280]">{ing.category}</div>
                                     </div>
-                                    <div style={{ fontSize: "0.78rem", fontFamily: "'JetBrains Mono', monospace", color: "#f59e0b", fontWeight: 600 }}>฿{calcCostPerUnit(ing).toFixed(3)}/{ing.recipeUnit}</div>
+                                    <div className="text-[0.78rem] font-['JetBrains_Mono'] text-[#f59e0b] font-semibold whitespace-nowrap">฿{calcCostPerUnit(ing).toFixed(2)}/{ing.recipeUnit}</div>
                                 </div>
                             ))}
                         </div>
@@ -302,59 +297,70 @@
             const filtered = filter === "ทั้งหมด" ? ingredients : ingredients.filter(i => i.category === filter);
 
             return (
-                <div>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+                <div className="pb-10">
+                    <div className="flex items-center justify-between mb-6">
                         <div>
-                            <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#f1f5f9" }}>วัตถุดิบ</div>
-                            <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>{ingredients.length} รายการ</div>
+                            <div className="text-2xl font-bold text-[#f1f5f9]">วัตถุดิบ</div>
+                            <div className="text-sm text-[#6b7280]">{ingredients.length} รายการ</div>
                         </div>
-                        <Btn onClick={openAdd}>+ เพิ่มวัตถุดิบ</Btn>
+                        <Btn onClick={openAdd}>+ เพิ่ม</Btn>
                     </div>
 
-                    <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+                    {/* หมวดหมู่ (เลื่อนได้บนมือถือ) */}
+                    <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide" style={{ WebkitOverflowScrolling: "touch" }}>
                         {["ทั้งหมด", ...CATEGORIES].map(cat => (
-                            <button key={cat} onClick={() => setFilter(cat)} style={{ padding: "4px 14px", borderRadius: 20, border: "1px solid", borderColor: filter === cat ? "#f59e0b" : "#2a2a45", background: filter === cat ? "rgba(245,158,11,0.15)" : "transparent", color: filter === cat ? "#f59e0b" : "#6b7280", fontSize: "0.75rem", cursor: "pointer", fontFamily: "'Sora', sans-serif" }}>{cat}</button>
+                            <button key={cat} onClick={() => setFilter(cat)} 
+                                className={`px-3 py-1.5 rounded-full border text-xs whitespace-nowrap transition-all ${filter === cat ? 'border-[#f59e0b] bg-[#f59e0b]/10 text-[#f59e0b]' : 'border-[#2a2a45] bg-transparent text-[#6b7280]'}`}>
+                                {cat}
+                            </button>
                         ))}
                     </div>
 
-                    <div style={{ background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 12, overflow: "hidden" }}>
-                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                            <thead>
-                                <tr style={{ borderBottom: "1px solid #2a2a45" }}>
-                                    {["ชื่อวัตถุดิบ", "หมวด", "ราคาซื้อ", "หน่วยสูตร", "Yield %", "ต้นทุน/หน่วย", ""].map(h => (
-                                        <th key={h} style={{ padding: "0.75rem 1rem", textAlign: "left", fontSize: "0.7rem", color: "#6b7280", fontWeight: 500, letterSpacing: "0.05em", textTransform: "uppercase" }}>{h}</th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filtered.length === 0 && (
-                                    <tr><td colSpan="7" style={{textAlign: 'center', padding: '2rem', color: '#6b7280'}}>ยังไม่มีข้อมูล - กดเพิ่มวัตถุดิบด้านบนเลย!</td></tr>
-                                )}
-                                {filtered.map(ing => {
-                                    const cpu = calcCostPerUnit(ing);
-                                    return (
-                                        <tr key={ing.id} style={{ borderBottom: "1px solid #1e1e35" }} onMouseEnter={e => e.currentTarget.style.background = "#1e1e35"} onMouseLeave={e => e.currentTarget.style.background = ""}>
-                                            <td style={{ padding: "0.75rem 1rem", color: "#f1f5f9", fontSize: "0.85rem", fontWeight: 500 }}>{ing.name}</td>
-                                            <td style={{ padding: "0.75rem 1rem" }}>
-                                                <span style={{ background: `${CAT_COLORS[ing.category]}20`, color: CAT_COLORS[ing.category], border: `1px solid ${CAT_COLORS[ing.category]}40`, borderRadius: 6, padding: "2px 8px", fontSize: "0.7rem", fontWeight: 600 }}>{ing.category}</span>
-                                            </td>
-                                            <td style={{ padding: "0.75rem 1rem", color: "#e2e8f0", fontSize: "0.82rem", fontFamily: "'JetBrains Mono', monospace" }}>฿{ing.purchasePrice}/{ing.purchaseUnit}</td>
-                                            <td style={{ padding: "0.75rem 1rem", color: "#94a3b8", fontSize: "0.82rem", fontFamily: "'JetBrains Mono', monospace" }}>{ing.recipeUnit}</td>
-                                            <td style={{ padding: "0.75rem 1rem" }}>
-                                                <span style={{ color: ing.yieldPct >= 90 ? "#22c55e" : "#f59e0b", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.82rem" }}>{ing.yieldPct}%</span>
-                                            </td>
-                                            <td style={{ padding: "0.75rem 1rem", color: "#f59e0b", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.82rem", fontWeight: 600 }}>฿{cpu.toFixed(4)}/{ing.recipeUnit}</td>
-                                            <td style={{ padding: "0.75rem 1rem" }}>
-                                                <div style={{ display: "flex", gap: 6 }}>
-                                                    <button onClick={() => openEdit(ing)} style={{ background: "#2a2a45", border: "none", color: "#94a3b8", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: "0.72rem" }}>แก้ไข</button>
-                                                    <button onClick={() => del(ing.id)} style={{ background: "rgba(239,68,68,0.1)", border: "none", color: "#ef4444", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: "0.72rem" }}>ลบ</button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                    {/* 🚀 ตารางปรับให้รองรับการปัดซ้ายขวาบน iPhone */}
+                    <div className="bg-[#1a1a2e] border border-[#2a2a45] rounded-xl overflow-hidden">
+                        <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
+                            <table className="w-full text-left min-w-[650px] border-collapse">
+                                <thead>
+                                    <tr className="border-b border-[#2a2a45] bg-[#12121f]/50">
+                                        <th className="p-3 md:p-4 text-[0.7rem] text-[#6b7280] font-medium tracking-wide uppercase">ชื่อวัตถุดิบ</th>
+                                        <th className="p-3 md:p-4 text-[0.7rem] text-[#6b7280] font-medium tracking-wide uppercase">หมวด</th>
+                                        <th className="p-3 md:p-4 text-[0.7rem] text-[#6b7280] font-medium tracking-wide uppercase">ราคาซื้อ</th>
+                                        <th className="p-3 md:p-4 text-[0.7rem] text-[#6b7280] font-medium tracking-wide uppercase">Yield</th>
+                                        <th className="p-3 md:p-4 text-[0.7rem] text-[#6b7280] font-medium tracking-wide uppercase">ต้นทุน/หน่วย</th>
+                                        <th className="p-3 md:p-4"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filtered.length === 0 && (
+                                        <tr><td colSpan="6" className="text-center p-8 text-[#6b7280] text-sm">ยังไม่มีข้อมูล - กดเพิ่มวัตถุดิบเลย!</td></tr>
+                                    )}
+                                    {filtered.map(ing => {
+                                        const cpu = calcCostPerUnit(ing);
+                                        return (
+                                            <tr key={ing.id} className="border-b border-[#1e1e35] hover:bg-[#1e1e35]/50 transition-colors">
+                                                <td className="p-3 md:p-4 text-[#f1f5f9] text-sm font-medium">{ing.name}</td>
+                                                <td className="p-3 md:p-4">
+                                                    <span className="rounded-md px-2 py-1 text-[0.65rem] font-semibold border" style={{ background: `${CAT_COLORS[ing.category]}15`, color: CAT_COLORS[ing.category], borderColor: `${CAT_COLORS[ing.category]}30` }}>
+                                                        {ing.category}
+                                                    </span>
+                                                </td>
+                                                <td className="p-3 md:p-4 text-[#e2e8f0] text-[0.8rem] font-['JetBrains_Mono']">฿{ing.purchasePrice}/{ing.purchaseUnit}</td>
+                                                <td className="p-3 md:p-4">
+                                                    <span className="font-['JetBrains_Mono'] text-[0.8rem]" style={{ color: ing.yieldPct >= 90 ? "#22c55e" : "#f59e0b" }}>{ing.yieldPct}%</span>
+                                                </td>
+                                                <td className="p-3 md:p-4 text-[#f59e0b] font-['JetBrains_Mono'] text-[0.8rem] font-semibold">฿{cpu.toFixed(4)}<span className="text-[#6b7280] text-[0.7rem]">/{ing.recipeUnit}</span></td>
+                                                <td className="p-3 md:p-4">
+                                                    <div className="flex gap-2 justify-end">
+                                                        <button onClick={() => openEdit(ing)} className="bg-[#2a2a45] text-[#94a3b8] rounded px-2.5 py-1 text-xs active:scale-95">แก้ไข</button>
+                                                        <button onClick={() => del(ing.id)} className="bg-red-500/10 text-red-500 rounded px-2.5 py-1 text-xs active:scale-95">ลบ</button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
                     {showModal && (
@@ -363,28 +369,28 @@
                             <Select label="หมวดหมู่" value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))}>
                                 {CATEGORIES.map(c => <option key={c}>{c}</option>)}
                             </Select>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                            <div className="grid grid-cols-2 gap-3">
                                 <Input label="ราคาซื้อ (บาท)" type="number" value={form.purchasePrice} onChange={e => setForm(p => ({ ...p, purchasePrice: e.target.value }))} placeholder="0" />
-                                <Input label="หน่วยที่ซื้อ" value={form.purchaseUnit} onChange={e => setForm(p => ({ ...p, purchaseUnit: e.target.value }))} placeholder="kg, ขวด, ลัง" />
+                                <Input label="หน่วยที่ซื้อ" value={form.purchaseUnit} onChange={e => setForm(p => ({ ...p, purchaseUnit: e.target.value }))} placeholder="kg, แพ็ค" />
                             </div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                            <div className="grid grid-cols-2 gap-3">
                                 <Input label="หน่วยในสูตร" value={form.recipeUnit} onChange={e => setForm(p => ({ ...p, recipeUnit: e.target.value }))} placeholder="g, ml, ฟอง" />
                                 <Input label="Conversion Factor" type="number" value={form.conversionFactor} onChange={e => setForm(p => ({ ...p, conversionFactor: e.target.value }))} placeholder="1000" />
                             </div>
-                            <Input label="Yield % (เปอร์เซ็นต์ส่วนที่ใช้ได้จริง)" type="number" value={form.yieldPct} onChange={e => setForm(p => ({ ...p, yieldPct: e.target.value }))} placeholder="100" />
+                            <Input label="Yield % (ส่วนที่ใช้ได้จริง)" type="number" value={form.yieldPct} onChange={e => setForm(p => ({ ...p, yieldPct: e.target.value }))} placeholder="100" />
 
                             {form.purchasePrice && form.conversionFactor && form.yieldPct && (
-                                <div style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 8, padding: "0.75rem 1rem", marginBottom: 16, fontSize: "0.8rem" }}>
-                                    <span style={{ color: "#94a3b8" }}>ต้นทุนต่อหน่วย: </span>
-                                    <span style={{ color: "#f59e0b", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>
-                                        ฿{((parseFloat(form.purchasePrice) / parseFloat(form.conversionFactor)) / (parseFloat(form.yieldPct) / 100)).toFixed(4)} / {form.recipeUnit || "หน่วย"}
+                                <div className="bg-[#f59e0b]/10 border border-[#f59e0b]/30 rounded-lg p-3 md:p-4 mb-4 text-sm flex justify-between items-center">
+                                    <span className="text-[#94a3b8]">ต้นทุนต่อหน่วย: </span>
+                                    <span className="text-[#f59e0b] font-['JetBrains_Mono'] font-bold text-lg">
+                                        ฿{((parseFloat(form.purchasePrice) / parseFloat(form.conversionFactor)) / (parseFloat(form.yieldPct) / 100)).toFixed(4)} <span className="text-xs text-[#94a3b8] font-sans font-normal">/ {form.recipeUnit || "หน่วย"}</span>
                                     </span>
                                 </div>
                             )}
 
-                            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                                <Btn variant="ghost" onClick={() => setShowModal(false)}>ยกเลิก</Btn>
-                                <Btn onClick={save}>{editItem ? "บันทึก" : "เพิ่มวัตถุดิบ"}</Btn>
+                            <div className="flex gap-2 justify-end mt-2">
+                                <Btn variant="ghost" onClick={() => setShowModal(false)} className="flex-1 md:flex-none">ยกเลิก</Btn>
+                                <Btn onClick={save} className="flex-1 md:flex-none">{editItem ? "บันทึก" : "เพิ่มวัตถุดิบ"}</Btn>
                             </div>
                         </Modal>
                     )}
@@ -453,98 +459,104 @@
             }
 
             return (
-                <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 18, height: "calc(100vh - 120px)" }}>
-                    <div style={{ background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-                        <div style={{ padding: "1rem", borderBottom: "1px solid #2a2a45", fontSize: "0.75rem", color: "#6b7280", letterSpacing: "0.08em", textTransform: "uppercase" }}>สูตรอาหาร</div>
-                        <div style={{ flex: 1, overflow: "auto" }}>
-                            {recipes.length === 0 && <div style={{padding: '1rem', color: '#6b7280', fontSize: '0.8rem'}}>ยังไม่มีสูตรอาหาร</div>}
+                <div className="flex flex-col md:grid md:grid-cols-[250px_1fr] gap-4 md:gap-5 h-auto md:h-[calc(100vh-120px)] pb-10">
+                    
+                    {/* 🚀 กล่องซ้าย: รายการสูตร (เรียงต่อกันบนมือถือ) */}
+                    <div className="bg-[#1a1a2e] border border-[#2a2a45] rounded-xl flex flex-col h-[250px] md:h-auto flex-shrink-0">
+                        <div className="p-4 border-b border-[#2a2a45] text-xs text-[#6b7280] tracking-widest uppercase font-semibold flex justify-between items-center">
+                            <span>สูตรอาหารทั้งหมด</span>
+                            <span className="md:hidden text-[#f59e0b] bg-[#f59e0b]/10 px-2 py-0.5 rounded text-[0.6rem]">{recipes.length}</span>
+                        </div>
+                        <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: "touch" }}>
+                            {recipes.length === 0 && <div className="p-4 text-[#6b7280] text-sm text-center">ยังไม่มีสูตรอาหาร</div>}
                             {recipes.map(r => {
                                 const cost = calcRecipeCost(r, ingredients) / r.servings;
                                 return (
-                                    <div key={r.id} onClick={() => setSelected(r.id)} style={{ padding: "0.8rem 1rem", cursor: "pointer", borderBottom: "1px solid #1e1e35", background: selected === r.id ? "rgba(245,158,11,0.1)" : "transparent", borderLeft: selected === r.id ? "3px solid #f59e0b" : "3px solid transparent" }}>
-                                        <div style={{ fontSize: "0.82rem", color: selected === r.id ? "#f59e0b" : "#e2e8f0", fontWeight: 500 }}>{r.name}</div>
-                                        <div style={{ fontSize: "0.7rem", color: "#6b7280", marginTop: 2, fontFamily: "'JetBrains Mono', monospace" }}>฿{cost.toFixed(2)}/serving</div>
+                                    <div key={r.id} onClick={() => setSelected(r.id)} 
+                                        className={`p-3 md:p-4 cursor-pointer border-b border-[#1e1e35] transition-colors border-l-4 ${selected === r.id ? 'bg-[#f59e0b]/10 border-l-[#f59e0b]' : 'border-l-transparent hover:bg-[#1e1e35]/50'}`}>
+                                        <div className={`text-sm font-medium ${selected === r.id ? 'text-[#f59e0b]' : 'text-[#e2e8f0]'}`}>{r.name}</div>
+                                        <div className="text-[0.7rem] text-[#6b7280] mt-1 font-['JetBrains_Mono']">฿{cost.toFixed(2)}/serving</div>
                                     </div>
                                 );
                             })}
                         </div>
-                        <div style={{ padding: "0.75rem" }}>
+                        <div className="p-3 bg-[#12121f] border-t border-[#2a2a45] rounded-b-xl">
                             {showNew ? (
-                                <div>
-                                    <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="ชื่อสูตรอาหาร" onKeyDown={e => e.key === "Enter" && createRecipe()} style={{ width: "100%", background: "#12121f", border: "1px solid #2a2a45", borderRadius: 8, padding: "0.5rem", color: "#f1f5f9", fontSize: "0.8rem", fontFamily: "'Sora', sans-serif", marginBottom: 6, boxSizing: "border-box" }} />
-                                    <div style={{ display: "flex", gap: 6 }}>
-                                        <Btn onClick={createRecipe} style={{ flex: 1, padding: "0.4rem" }}>สร้าง</Btn>
-                                        <Btn variant="ghost" onClick={() => setShowNew(false)} style={{ padding: "0.4rem 0.6rem" }}>×</Btn>
+                                <div className="flex flex-col gap-2">
+                                    <input autoFocus value={newName} onChange={e => setNewName(e.target.value)} placeholder="ชื่อสูตรใหม่..." onKeyDown={e => e.key === "Enter" && createRecipe()} className="w-full bg-[#1a1a2e] border border-[#2a2a45] rounded-lg p-2 text-[#f1f5f9] text-sm font-['Sora'] outline-none focus:border-[#f59e0b]" />
+                                    <div className="flex gap-2">
+                                        <Btn onClick={createRecipe} className="flex-1 py-1.5 text-xs">บันทึก</Btn>
+                                        <Btn variant="ghost" onClick={() => setShowNew(false)} className="py-1.5 px-3 text-xs">×</Btn>
                                     </div>
                                 </div>
                             ) : (
-                                <Btn onClick={() => setShowNew(true)} style={{ width: "100%", textAlign: "center" }}>+ สูตรใหม่</Btn>
+                                <Btn onClick={() => setShowNew(true)} className="w-full py-2 border border-dashed border-[#f59e0b]/50 bg-transparent text-[#f59e0b]">+ สร้างสูตรใหม่</Btn>
                             )}
                         </div>
                     </div>
 
+                    {/* 🚀 กล่องขวา: รายละเอียดสูตร */}
                     {recipe ? (
-                        <div style={{ background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-                            <div style={{ padding: "1rem 1.5rem", borderBottom: "1px solid #2a2a45", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                <div style={{ display: "flex", gap: 10, alignItems: "center"}}>
-                                    <div style={{ fontSize: "1.1rem", fontWeight: 600, color: "#f1f5f9" }}>{recipe.name}</div>
-                                    <button onClick={deleteRecipe} style={{background: 'transparent', border: 'none', color: '#ef4444', fontSize: '0.7rem', cursor: 'pointer', padding: '4px'}}>🗑️ ลบสูตร</button>
-                                </div>
-                                <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-                                    <div style={{ textAlign: "right" }}>
-                                        <div style={{ fontSize: "0.65rem", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>ต้นทุนต่อ serving</div>
-                                        <div style={{ fontSize: "1.3rem", fontWeight: 700, color: "#f59e0b", fontFamily: "'JetBrains Mono', monospace" }}>฿{totalCost.toFixed(2)}</div>
+                        <div className="bg-[#1a1a2e] border border-[#2a2a45] rounded-xl flex flex-col min-h-[400px]">
+                            <div className="p-4 md:p-5 border-b border-[#2a2a45] flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="text-lg md:text-xl font-bold text-[#f1f5f9]">{recipe.name}</div>
+                                        <button onClick={deleteRecipe} className="bg-red-500/10 text-red-500 p-1.5 rounded-md text-xs active:scale-95">🗑️</button>
                                     </div>
+                                </div>
+                                <div className="bg-[#12121f] px-4 py-2 rounded-lg border border-[#2a2a45] self-start md:self-auto">
+                                    <div className="text-[0.65rem] text-[#6b7280] uppercase tracking-widest mb-0.5">ต้นทุนต่อ Serving</div>
+                                    <div className="text-xl font-bold text-[#f59e0b] font-['JetBrains_Mono'] leading-none">฿{totalCost.toFixed(2)}</div>
                                 </div>
                             </div>
 
-                            <div style={{ flex: 1, overflow: "auto", padding: "1rem 1.5rem" }}>
+                            <div className="flex-1 overflow-y-auto p-4 md:p-5" style={{ WebkitOverflowScrolling: "touch" }}>
                                 {recipe.items.length === 0 && (
-                                    <div style={{ textAlign: "center", padding: "3rem", color: "#6b7280", fontSize: "0.85rem" }}>ยังไม่มีวัตถุดิบ — เพิ่มด้านล่างได้เลย</div>
+                                    <div className="text-center p-8 border-2 border-dashed border-[#2a2a45] rounded-xl text-[#6b7280] text-sm">สูตรว่างเปล่า — เพิ่มวัตถุดิบด้านล่างได้เลยครับเชฟ!</div>
                                 )}
                                 {recipe.items.map(item => {
                                     const ing = ingredients.find(i => i.id === item.ingredientId);
                                     if (!ing) return null;
                                     const lineCost = calcCostPerUnit(ing) * item.qty;
                                     return (
-                                        <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "0.65rem 0", borderBottom: "1px solid #1e1e35" }}>
-                                            <div style={{ width: 10, height: 10, borderRadius: "50%", background: CAT_COLORS[ing.category], flexShrink: 0 }} />
-                                            <div style={{ flex: 1 }}>
-                                                <div style={{ fontSize: "0.85rem", color: "#e2e8f0", fontWeight: 500 }}>{ing.name}</div>
-                                                <div style={{ fontSize: "0.7rem", color: "#6b7280" }}>{ing.category} · ฿{calcCostPerUnit(ing).toFixed(4)}/{ing.recipeUnit}</div>
+                                        <div key={item.id} className="flex items-center gap-3 py-3 border-b border-[#1e1e35] last:border-0">
+                                            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: CAT_COLORS[ing.category] }} />
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-sm text-[#e2e8f0] font-medium truncate">{ing.name}</div>
+                                                <div className="text-[0.7rem] text-[#6b7280] font-['JetBrains_Mono']">฿{calcCostPerUnit(ing).toFixed(2)}/{ing.recipeUnit}</div>
                                             </div>
-                                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                                <input type="number" value={item.qty} onChange={e => updateQty(item.id, e.target.value)} style={{ width: 70, background: "#12121f", border: "1px solid #2a2a45", borderRadius: 6, padding: "4px 8px", color: "#f1f5f9", fontSize: "0.8rem", fontFamily: "'JetBrains Mono', monospace", textAlign: "right" }} />
-                                                <span style={{ fontSize: "0.72rem", color: "#6b7280", width: 25 }}>{ing.recipeUnit}</span>
+                                            <div className="flex items-center gap-1.5">
+                                                <input type="number" value={item.qty} onChange={e => updateQty(item.id, e.target.value)} className="w-[60px] bg-[#12121f] border border-[#2a2a45] rounded-md py-1 px-2 text-[#f1f5f9] text-sm font-['JetBrains_Mono'] text-right focus:border-[#f59e0b] outline-none" />
+                                                <span className="text-xs text-[#6b7280] w-5">{ing.recipeUnit}</span>
                                             </div>
-                                            <div style={{ fontSize: "0.82rem", color: "#f59e0b", fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, width: 70, textAlign: "right" }}>฿{lineCost.toFixed(3)}</div>
-                                            <button onClick={() => removeItem(item.id)} style={{ background: "transparent", border: "none", color: "#4b5563", cursor: "pointer", fontSize: "1rem", padding: "0 4px" }}>×</button>
+                                            <div className="text-sm text-[#f59e0b] font-['JetBrains_Mono'] font-semibold w-[60px] text-right">฿{lineCost.toFixed(2)}</div>
+                                            <button onClick={() => removeItem(item.id)} className="text-[#6b7280] hover:text-red-500 px-1 text-lg">×</button>
                                         </div>
                                     );
                                 })}
                             </div>
 
-                            <div style={{ padding: "1rem 1.5rem", borderTop: "1px solid #2a2a45", background: "#12121f" }}>
-                                <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
-                                    <div style={{ flex: 2 }}>
-                                        <div style={{ fontSize: "0.68rem", color: "#6b7280", marginBottom: 5 }}>เลือกวัตถุดิบ (พิมพ์ค้นหาได้)</div>
-                                        {/* 🚀 เปลี่ยนช่องเลือกแบบเก่า เป็นกล่องค้นหาอัจฉริยะ */}
-                                        <SearchableSelect 
-                                            options={ingredients} 
-                                            value={addIngId} 
-                                            onChange={val => setAddIngId(val)} 
-                                        />
+                            <div className="p-4 bg-[#12121f] border-t border-[#2a2a45] rounded-b-xl">
+                                <div className="flex flex-col md:flex-row gap-3 md:items-end">
+                                    <div className="flex-1">
+                                        <div className="text-[0.68rem] text-[#6b7280] mb-1.5">ค้นหาวัตถุดิบ</div>
+                                        <SearchableSelect options={ingredients} value={addIngId} onChange={val => setAddIngId(val)} />
                                     </div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontSize: "0.68rem", color: "#6b7280", marginBottom: 5 }}>ปริมาณ</div>
-                                        <input type="number" value={addQty} onChange={e => setAddQty(e.target.value)} style={{ width: "100%", background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 8, padding: "0.5rem 0.75rem", color: "#f1f5f9", fontSize: "0.82rem", fontFamily: "'JetBrains Mono', monospace" }} />
+                                    <div className="flex gap-3 items-end">
+                                        <div className="w-[90px]">
+                                            <div className="text-[0.68rem] text-[#6b7280] mb-1.5">ปริมาณ</div>
+                                            <input type="number" value={addQty} onChange={e => setAddQty(e.target.value)} className="w-full bg-[#1a1a2e] border border-[#2a2a45] rounded-lg p-2 text-[#f1f5f9] text-sm font-['JetBrains_Mono'] outline-none focus:border-[#f59e0b]" />
+                                        </div>
+                                        <Btn onClick={addItem} className="h-[38px] px-6 whitespace-nowrap">+ ใส่หม้อ</Btn>
                                     </div>
-                                    <Btn onClick={addItem} style={{ height: "35px" }}>+ เพิ่ม</Btn>
                                 </div>
                             </div>
                         </div>
                     ) : (
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", color: "#6b7280", fontSize: "0.9rem", border: "1px dashed #2a2a45", borderRadius: 12 }}>เลือก หรือสร้างสูตรอาหารใหม่ด้านซ้ายมือครับ</div>
+                        <div className="hidden md:flex bg-[#1a1a2e] border border-dashed border-[#2a2a45] rounded-xl items-center justify-center text-[#6b7280] text-sm">
+                            👈 เลือก หรือสร้างสูตรอาหารใหม่ด้านซ้ายมือครับ
+                        </div>
                     )}
                 </div>
             );
@@ -587,86 +599,90 @@
             const previewFc = form.price > 0 ? (previewCost / parseFloat(form.price)) * 100 : 0;
 
             return (
-                <div>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+                <div className="pb-10">
+                    <div className="flex items-center justify-between mb-6">
                         <div>
-                            <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#f1f5f9" }}>เมนูอาหาร</div>
-                            <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>ตั้งราคาขายและดู Food Cost %</div>
+                            <div className="text-2xl font-bold text-[#f1f5f9]">เมนูหน้าร้าน</div>
+                            <div className="text-sm text-[#6b7280]">ตั้งราคาและดู % กำไร</div>
                         </div>
                         <Btn onClick={() => setShowModal(true)}>+ เพิ่มเมนู</Btn>
                     </div>
 
-                    <div style={{ display: "grid", gap: 12 }}>
-                        {menuWithCosts.length === 0 && <div style={{color: '#6b7280', fontSize: '0.9rem', textAlign: 'center', padding: '2rem'}}>ยังไม่มีข้อมูลเมนูหน้าร้าน</div>}
+                    <div className="grid gap-4">
+                        {menuWithCosts.length === 0 && <div className="text-[#6b7280] text-center p-8 bg-[#1a1a2e] rounded-xl border border-dashed border-[#2a2a45]">ยังไม่มีข้อมูลเมนูหน้าร้าน</div>}
+                        
+                        {/* 🚀 ปรับการ์ดเมนูให้พับเป็นแนวตั้งบน iPhone */}
                         {menuWithCosts.map(item => (
-                            <div key={item.id} style={{ background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 12, padding: "1.25rem 1.5rem", display: "flex", alignItems: "center", gap: 20 }}>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: "1rem", fontWeight: 600, color: "#f1f5f9", marginBottom: 4 }}>{item.name}</div>
-                                    <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>Recipe: {recipes.find(r => r.id === item.recipeId)?.name || "-"}</div>
+                            <div key={item.id} className="bg-[#1a1a2e] border border-[#2a2a45] rounded-xl p-4 md:p-5 flex flex-col md:flex-row md:items-center gap-4 md:gap-6 relative overflow-hidden">
+                                
+                                {/* แถบสีสถานะด้านซ้าย */}
+                                <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ background: fcColor(item.pct) }} />
+
+                                <div className="flex-1 pl-2">
+                                    <div className="text-base font-semibold text-[#f1f5f9] mb-1">{item.name}</div>
+                                    <div className="text-xs text-[#6b7280]">จากสูตร: {recipes.find(r => r.id === item.recipeId)?.name || "-"}</div>
                                 </div>
 
-                                <div style={{ textAlign: "center" }}>
-                                    <div style={{ fontSize: "0.65rem", color: "#6b7280", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.07em" }}>ต้นทุน</div>
-                                    <div style={{ fontSize: "1.1rem", fontWeight: 600, color: "#e2e8f0", fontFamily: "'JetBrains Mono', monospace" }}>฿{item.cost.toFixed(2)}</div>
-                                </div>
-
-                                <div style={{ textAlign: "center" }}>
-                                    <div style={{ fontSize: "0.65rem", color: "#6b7280", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.07em" }}>ราคาขาย</div>
-                                    <div style={{ fontSize: "1.1rem", fontWeight: 600, color: "#38bdf8", fontFamily: "'JetBrains Mono', monospace" }}>฿{item.price.toFixed(0)}</div>
-                                </div>
-
-                                <div style={{ textAlign: "center" }}>
-                                    <div style={{ fontSize: "0.65rem", color: "#6b7280", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.07em" }}>กำไรขั้นต้น</div>
-                                    <div style={{ fontSize: "1.1rem", fontWeight: 600, color: "#22c55e", fontFamily: "'JetBrains Mono', monospace" }}>฿{item.profit.toFixed(2)}</div>
-                                </div>
-
-                                <div style={{ textAlign: "center", minWidth: 80 }}>
-                                    <div style={{ fontSize: "0.65rem", color: "#6b7280", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.07em" }}>Food Cost</div>
-                                    <div style={{ background: fcBg(item.pct), border: `1px solid ${fcColor(item.pct)}40`, borderRadius: 8, padding: "4px 12px", display: "inline-block" }}>
-                                        <span style={{ fontSize: "1.2rem", fontWeight: 700, color: fcColor(item.pct), fontFamily: "'JetBrains Mono', monospace" }}>{item.pct.toFixed(1)}%</span>
+                                <div className="grid grid-cols-3 gap-2 md:gap-6 bg-[#12121f] md:bg-transparent p-3 md:p-0 rounded-lg border md:border-0 border-[#2a2a45]">
+                                    <div className="text-center">
+                                        <div className="text-[0.65rem] text-[#6b7280] uppercase mb-1">ต้นทุน</div>
+                                        <div className="text-sm md:text-base font-semibold text-[#e2e8f0] font-['JetBrains_Mono']">฿{item.cost.toFixed(1)}</div>
                                     </div>
-                                    {item.pct > 38 && <div style={{ fontSize: "0.65rem", color: "#f59e0b", marginTop: 4 }}>แนะนำ ฿{item.suggested.toFixed(0)}+</div>}
-                                </div>
-
-                                <div>
-                                    <div style={{ width: 120 }}>
-                                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.6rem", color: "#6b7280", marginBottom: 4 }}>
-                                            <span>0%</span><span>35%</span><span>50%+</span>
-                                        </div>
-                                        <div style={{ height: 8, background: "#2a2a45", borderRadius: 4, position: "relative" }}>
-                                            <div style={{ position: "absolute", left: "35%", top: -1, width: 1, height: 10, background: "#f59e0b", opacity: 0.5 }} />
-                                            <div style={{ height: "100%", width: `${Math.min(item.pct * 2, 100)}%`, background: `linear-gradient(to right, #22c55e, ${fcColor(item.pct)})`, borderRadius: 4 }} />
-                                        </div>
+                                    <div className="text-center">
+                                        <div className="text-[0.65rem] text-[#6b7280] uppercase mb-1">ราคาขาย</div>
+                                        <div className="text-sm md:text-base font-semibold text-[#38bdf8] font-['JetBrains_Mono']">฿{item.price.toFixed(0)}</div>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="text-[0.65rem] text-[#6b7280] uppercase mb-1">กำไร</div>
+                                        <div className="text-sm md:text-base font-semibold text-[#22c55e] font-['JetBrains_Mono']">฿{item.profit.toFixed(1)}</div>
                                     </div>
                                 </div>
 
-                                <button onClick={() => delMenu(item.id)} style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", borderRadius: 8, padding: "6px 10px", cursor: "pointer", fontSize: "0.72rem" }}>ลบ</button>
+                                <div className="flex items-center justify-between md:justify-end gap-4 border-t md:border-0 border-[#2a2a45] pt-3 md:pt-0 pl-2 md:pl-0">
+                                    <div className="text-center md:text-right flex items-center gap-3 md:block">
+                                        <div className="text-[0.65rem] text-[#6b7280] uppercase mb-1 hidden md:block">Food Cost</div>
+                                        <div className="px-3 py-1 rounded-lg border font-['JetBrains_Mono'] font-bold text-lg" 
+                                             style={{ background: fcBg(item.pct), borderColor: `${fcColor(item.pct)}40`, color: fcColor(item.pct) }}>
+                                            {item.pct.toFixed(1)}%
+                                        </div>
+                                    </div>
+
+                                    <div className="w-[80px] md:w-[100px] hidden sm:block">
+                                        <div className="flex justify-between text-[0.55rem] text-[#6b7280] mb-1"><span>0%</span><span>35%</span></div>
+                                        <div className="h-2 bg-[#2a2a45] rounded-full relative">
+                                            <div className="absolute left-[35%] top-[-2px] w-px h-3 bg-[#f59e0b] opacity-50" />
+                                            <div className="h-full rounded-full" style={{ width: `${Math.min(item.pct * 2, 100)}%`, background: `linear-gradient(to right, #22c55e, ${fcColor(item.pct)})` }} />
+                                        </div>
+                                    </div>
+
+                                    <button onClick={() => delMenu(item.id)} className="bg-red-500/10 text-red-500 rounded-lg p-2 md:px-3 md:py-1.5 text-xs active:scale-95">ลบ</button>
+                                </div>
                             </div>
                         ))}
                     </div>
 
                     {showModal && (
                         <Modal title="เพิ่มเมนูใหม่" onClose={() => setShowModal(false)}>
-                            <Input label="ชื่อเมนู (ที่แสดงในราคา)" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="เช่น ข้าวผัดกระเพราหมู + ไข่ดาว" />
-                            <Select label="เลือก Recipe" value={form.recipeId} onChange={e => setForm(p => ({ ...p, recipeId: e.target.value }))}>
+                            <Input label="ชื่อเมนู (ที่แสดงหน้าร้าน)" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="เช่น ข้าวผัดกระเพรา + ไข่ดาว" />
+                            <Select label="ดึงสูตรอาหารมาใช้" value={form.recipeId} onChange={e => setForm(p => ({ ...p, recipeId: e.target.value }))}>
                                 {recipes.length === 0 && <option value="">กรุณาสร้างสูตรอาหารก่อน</option>}
                                 {recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                             </Select>
-                            <Input label="ราคาขาย (บาท)" type="number" value={form.price} onChange={e => setForm(p => ({ ...p, price: e.target.value }))} placeholder="0" />
+                            <Input label="ตั้งราคาขาย (บาท)" type="number" value={form.price} onChange={e => setForm(p => ({ ...p, price: e.target.value }))} placeholder="0" />
 
                             {form.price > 0 && previewCost > 0 && (
-                                <div style={{ background: fcBg(previewFc), border: `1px solid ${fcColor(previewFc)}30`, borderRadius: 10, padding: "1rem", marginBottom: 16 }}>
-                                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, textAlign: "center" }}>
-                                        <div><div style={{ fontSize: "0.65rem", color: "#6b7280", marginBottom: 4 }}>ต้นทุน</div><div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: "#e2e8f0" }}>฿{previewCost.toFixed(2)}</div></div>
-                                        <div><div style={{ fontSize: "0.65rem", color: "#6b7280", marginBottom: 4 }}>กำไรขั้นต้น</div><div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: "#22c55e" }}>฿{(parseFloat(form.price) - previewCost).toFixed(2)}</div></div>
-                                        <div><div style={{ fontSize: "0.65rem", color: "#6b7280", marginBottom: 4 }}>Food Cost %</div><div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: fcColor(previewFc), fontSize: "1.2rem" }}>{previewFc.toFixed(1)}%</div></div>
+                                <div className="bg-[#12121f] border rounded-xl p-4 mb-4" style={{ borderColor: `${fcColor(previewFc)}40` }}>
+                                    <div className="grid grid-cols-3 gap-2 text-center">
+                                        <div><div className="text-xs text-[#6b7280] mb-1">ต้นทุน</div><div className="font-['JetBrains_Mono'] font-bold text-[#e2e8f0]">฿{previewCost.toFixed(1)}</div></div>
+                                        <div><div className="text-xs text-[#6b7280] mb-1">กำไร/จาน</div><div className="font-['JetBrains_Mono'] font-bold text-[#22c55e]">฿{(parseFloat(form.price) - previewCost).toFixed(1)}</div></div>
+                                        <div><div className="text-xs text-[#6b7280] mb-1">Food Cost</div><div className="font-['JetBrains_Mono'] font-bold text-lg" style={{ color: fcColor(previewFc) }}>{previewFc.toFixed(1)}%</div></div>
                                     </div>
                                 </div>
                             )}
 
-                            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                                <Btn variant="ghost" onClick={() => setShowModal(false)}>ยกเลิก</Btn>
-                                <Btn onClick={save}>เพิ่มเมนู</Btn>
+                            <div className="flex gap-2 justify-end">
+                                <Btn variant="ghost" onClick={() => setShowModal(false)} className="flex-1 md:flex-none">ยกเลิก</Btn>
+                                <Btn onClick={save} className="flex-1 md:flex-none">บันทึกขึ้นป้าย</Btn>
                             </div>
                         </Modal>
                     )}
@@ -674,8 +690,9 @@
             );
         }
 
+        // ─── MAIN APP ────────────────────────────────────────────────────────────────
         function App() {
-            const [tab, setTab] = useState("ingredients");
+            const [tab, setTab] = useState("dashboard");
             const [ingredients, setIngredients] = useState([]);
             const [recipes, setRecipes] = useState([]);
             const [menu, setMenu] = useState([]);
@@ -692,15 +709,13 @@
                         ]);
 
                         setIngredients(ingRes.data || []);
-                        
                         const formattedRecipes = (recRes.data || []).map(r => ({
-                            ...r,
-                            items: (riRes.data || []).filter(ri => ri.recipeId === r.id)
+                            ...r, items: (riRes.data || []).filter(ri => ri.recipeId === r.id)
                         }));
                         setRecipes(formattedRecipes);
                         setMenu(menuRes.data || []);
                     } catch (err) {
-                        console.error("Error loading data from Supabase:", err);
+                        console.error("Error load DB:", err);
                     } finally {
                         setLoadingDb(false);
                     }
@@ -709,24 +724,16 @@
             }, []);
 
             const navItems = [
-                { id: "dashboard", label: "Dashboard", icon: "◈" },
-                { id: "ingredients", label: "วัตถุดิบ", icon: "⊡" },
-                { id: "recipes", label: "สูตรอาหาร", icon: "⋮⋮" },
-                { id: "menu", label: "เมนู", icon: "◫" },
+                { id: "dashboard", label: "Dashboard", icon: "📊" },
+                { id: "ingredients", label: "วัตถุดิบ", icon: "🥩" },
+                { id: "recipes", label: "สูตรอาหาร", icon: "🍳" },
+                { id: "menu", label: "เมนูหน้าร้าน", icon: "📋" },
             ];
 
-            const menuWithCosts = menu.map(item => {
-                const recipe = recipes.find(r => r.id === item.recipeId);
-                const cost = recipe ? calcRecipeCost(recipe, ingredients) / recipe.servings : 0;
-                const pct = item.price > 0 ? (cost / item.price) * 100 : 0;
-                return pct;
-            });
-            const avgFc = menuWithCosts.length ? menuWithCosts.reduce((a, b) => a + b, 0) / menuWithCosts.length : 0;
-
             if (loadingDb) {
-                return <div style={{ height: "100vh", background: "#0d0d1a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#f59e0b", fontFamily: "'Sora', sans-serif" }}>
-                    <div style={{ fontSize: "2rem", marginBottom: 10 }}>🍜</div>
-                    <div>กำลังเชื่อมต่อระบบหลังบ้าน Supabase...</div>
+                return <div className="h-screen bg-[#0d0d1a] flex flex-col items-center justify-center text-[#f59e0b] font-['Sora']">
+                    <div className="text-4xl mb-4 animate-bounce">🍜</div>
+                    <div className="animate-pulse">กำลังตั้งเตา เชื่อมต่อฐานข้อมูล...</div>
                 </div>;
             }
 
@@ -734,57 +741,62 @@
                 <>
                     <style>{FONTS}</style>
                     <style>{`
-                        * { box-sizing: border-box; }
+                        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
                         body { margin: 0; background: #0d0d1a; }
+                        /* ซ่อน Scrollbar ให้ดูคลีนๆ บนมือถือ */
+                        .scrollbar-hide::-webkit-scrollbar { display: none; }
+                        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
                         ::-webkit-scrollbar { width: 4px; height: 4px; }
                         ::-webkit-scrollbar-track { background: transparent; }
                         ::-webkit-scrollbar-thumb { background: #2a2a45; border-radius: 4px; }
-                        input:focus, select:focus { border-color: #f59e0b !important; box-shadow: 0 0 0 2px rgba(245,158,11,0.15); }
+                        /* Safe area สำหรับ iPhone รอยบาก */
+                        .pb-safe { padding-bottom: calc(0.5rem + env(safe-area-inset-bottom)); }
                     `}</style>
-                    <div style={{ display: "flex", height: "100vh", background: "#0d0d1a", fontFamily: "'Sora', sans-serif", color: "#f1f5f9", overflow: "hidden" }}>
 
-                        {/* Sidebar */}
-                        <div style={{ width: 220, background: "#12121f", borderRight: "1px solid #1e1e35", display: "flex", flexDirection: "column", flexShrink: 0 }}>
-                            {/* Logo */}
-                            <div style={{ padding: "1.5rem 1.25rem 1rem", borderBottom: "1px solid #1e1e35" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                                    <div style={{ background: "linear-gradient(135deg, #f59e0b, #f97316)", width: 34, height: 34, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0 }}>🍜</div>
+                    {/* 🚀 โครงสร้างหลัก เปลี่ยน Layout ตามขนาดจออัตโนมัติ */}
+                    <div className="flex flex-col md:flex-row h-[100dvh] bg-[#0d0d1a] font-['Sora'] text-[#f1f5f9] overflow-hidden">
+
+                        {/* 🖥️ Sidebar (แสดงเฉพาะบนจอใหญ่ / ซ่อนบนมือถือ) */}
+                        <div className="hidden md:flex flex-col flex-shrink-0 w-[240px] bg-[#12121f] border-r border-[#1e1e35]">
+                            <div className="p-6 border-b border-[#1e1e35]">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-gradient-to-br from-[#f59e0b] to-[#f97316] w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-orange-500/20">🍜</div>
                                     <div>
-                                        <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "#f1f5f9" }}>FoodCost</div>
-                                        <div style={{ fontSize: "0.65rem", color: "#22c55e", fontFamily: "'JetBrains Mono', monospace" }}>🟢 Supabase Connected</div>
+                                        <div className="font-bold text-lg text-[#f1f5f9] leading-tight">FoodCost</div>
+                                        <div className="text-[0.65rem] text-[#22c55e] font-['JetBrains_Mono']">🟢 Cloud Sync On</div>
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Nav */}
-                            <nav style={{ padding: "0.75rem 0.75rem", flex: 1 }}>
+                            <nav className="p-4 flex-1 flex flex-col gap-2">
                                 {navItems.map(item => (
-                                    <button key={item.id} onClick={() => setTab(item.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "0.65rem 0.75rem", borderRadius: 8, border: "none", cursor: "pointer", marginBottom: 2, background: tab === item.id ? "rgba(245,158,11,0.12)" : "transparent", color: tab === item.id ? "#f59e0b" : "#6b7280", fontSize: "0.85rem", fontFamily: "'Sora', sans-serif", fontWeight: tab === item.id ? 600 : 400, transition: "all 0.15s", textAlign: "left" }}>
-                                        <span style={{ fontSize: "0.9rem", opacity: 0.8 }}>{item.icon}</span>
-                                        {item.label}
+                                    <button key={item.id} onClick={() => setTab(item.id)} 
+                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${tab === item.id ? 'bg-[#f59e0b]/15 text-[#f59e0b] font-semibold' : 'text-[#6b7280] hover:bg-[#1a1a2e] hover:text-[#e2e8f0]'}`}>
+                                        <span className="text-lg">{item.icon}</span>
+                                        <span className="text-sm">{item.label}</span>
                                     </button>
                                 ))}
                             </nav>
-
-                            {/* Bottom status */}
-                            <div style={{ padding: "1rem 1.25rem", borderTop: "1px solid #1e1e35" }}>
-                                <div style={{ fontSize: "0.65rem", color: "#6b7280", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>Avg Food Cost</div>
-                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                    <div style={{ flex: 1, height: 4, background: "#1e1e35", borderRadius: 2 }}>
-                                        <div style={{ height: "100%", width: `${Math.min(avgFc, 100)}%`, background: avgFc <= 35 ? "#22c55e" : avgFc <= 40 ? "#f59e0b" : "#ef4444", borderRadius: 2, transition: "width 0.5s" }} />
-                                    </div>
-                                    <span style={{ fontSize: "0.78rem", fontFamily: "'JetBrains Mono', monospace", color: avgFc <= 35 ? "#22c55e" : avgFc <= 40 ? "#f59e0b" : "#ef4444", fontWeight: 600 }}>{avgFc.toFixed(1)}%</span>
-                                </div>
-                            </div>
                         </div>
 
-                        {/* Main content */}
-                        <div style={{ flex: 1, overflow: "auto", padding: "2rem" }}>
+                        {/* 📝 Main Content Area (เว้นที่ด้านล่างเผื่อแถบเมนูมือถือ) */}
+                        <div className="flex-1 overflow-auto p-4 md:p-8 pb-24 md:pb-8 relative scroll-smooth" style={{ WebkitOverflowScrolling: "touch" }}>
                             {tab === "dashboard" && <Dashboard ingredients={ingredients} recipes={recipes} menu={menu} />}
                             {tab === "ingredients" && <IngredientsPage ingredients={ingredients} setIngredients={setIngredients} />}
                             {tab === "recipes" && <RecipesPage ingredients={ingredients} recipes={recipes} setRecipes={setRecipes} />}
                             {tab === "menu" && <MenuPage ingredients={ingredients} recipes={recipes} menu={menu} setMenu={setMenu} />}
                         </div>
+
+                        {/* 📱 Bottom Navigation Bar (แสดงเฉพาะบนมือถือ / iPhone) */}
+                        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#12121f]/95 backdrop-blur-md border-t border-[#1e1e35] flex justify-around items-end pb-safe pt-2 px-2 z-50">
+                            {navItems.map(item => (
+                                <button key={item.id} onClick={() => setTab(item.id)} 
+                                    className={`flex flex-col items-center justify-center w-full py-1 gap-1 transition-all ${tab === item.id ? 'text-[#f59e0b] scale-110' : 'text-[#6b7280] active:scale-95'}`}>
+                                    <span className="text-xl mb-0.5" style={{ filter: tab === item.id ? 'drop-shadow(0 2px 4px rgba(245,158,11,0.3))' : 'grayscale(100%) opacity(50%)' }}>{item.icon}</span>
+                                    <span className="text-[0.65rem] font-medium">{item.label}</span>
+                                </button>
+                            ))}
+                        </div>
+
                     </div>
                 </>
             );
