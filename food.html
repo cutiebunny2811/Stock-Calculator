@@ -26,7 +26,8 @@
     </script>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
+        // 🚀 เพิ่ม useRef เข้ามาสำหรับทำระบบคลิกนอกกรอบเพื่อปิดเมนู
+        const { useState, useEffect, useMemo, useRef } = React;
 
         const FONTS = "@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');";
 
@@ -64,6 +65,88 @@
             if (pct <= 30) return "rgba(34,197,94,0.12)";
             if (pct <= 38) return "rgba(245,158,11,0.12)";
             return "rgba(239,68,68,0.12)";
+        }
+
+        // ─── COMPONENTS ─────────────────────────────────────────────────────────────
+        
+        // 🌟 กล่องค้นหาอัจฉริยะ (New Component)
+        function SearchableSelect({ options, value, onChange }) {
+            const [isOpen, setIsOpen] = useState(false);
+            const [search, setSearch] = useState("");
+            const wrapperRef = useRef(null);
+
+            const selectedOption = options.find(o => o.id === parseInt(value));
+
+            useEffect(() => {
+                function handleClickOutside(event) {
+                    if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+                        setIsOpen(false);
+                    }
+                }
+                document.addEventListener("mousedown", handleClickOutside);
+                return () => document.removeEventListener("mousedown", handleClickOutside);
+            }, []);
+
+            const filteredOptions = options.filter(o => o.name.toLowerCase().includes(search.toLowerCase()));
+
+            return (
+                <div ref={wrapperRef} style={{ position: "relative", width: "100%" }}>
+                    <div
+                        onClick={() => setIsOpen(!isOpen)}
+                        style={{
+                            background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 8, padding: "0.5rem 0.75rem",
+                            color: selectedOption ? "#f1f5f9" : "#6b7280", fontSize: "0.82rem", fontFamily: "'Sora', sans-serif",
+                            cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center"
+                        }}
+                    >
+                        <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {selectedOption ? `${selectedOption.name} (${selectedOption.recipeUnit})` : "ค้นหาวัตถุดิบ..."}
+                        </span>
+                        <span style={{ fontSize: "0.6rem", color: "#6b7280" }}>▼</span>
+                    </div>
+
+                    {isOpen && (
+                        <div style={{
+                            position: "absolute", bottom: "100%", left: 0, right: 0, marginBottom: "4px",
+                            background: "#12121f", border: "1px solid #f59e0b", borderRadius: 8, zIndex: 50,
+                            boxShadow: "0 -10px 30px rgba(0,0,0,0.8)", display: "flex", flexDirection: "column"
+                        }}>
+                            <input
+                                autoFocus
+                                placeholder="พิมพ์ชื่อเพื่อค้นหา..."
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                style={{
+                                    background: "transparent", border: "none", borderBottom: "1px solid #2a2a45",
+                                    padding: "0.75rem", color: "#f1f5f9", fontSize: "0.85rem", outline: "none", width: "100%", fontFamily: "'Sora', sans-serif"
+                                }}
+                            />
+                            <div style={{ maxHeight: "250px", overflowY: "auto" }}>
+                                {filteredOptions.length === 0 && <div style={{ padding: "1rem", color: "#6b7280", fontSize: "0.8rem", textAlign: "center" }}>ไม่พบวัตถุดิบนี้</div>}
+                                {filteredOptions.map(o => (
+                                    <div
+                                        key={o.id}
+                                        onClick={() => {
+                                            onChange(o.id);
+                                            setIsOpen(false);
+                                            setSearch("");
+                                        }}
+                                        style={{
+                                            padding: "0.6rem 0.75rem", fontSize: "0.82rem", color: value == o.id ? "#f59e0b" : "#e2e8f0", cursor: "pointer",
+                                            background: value == o.id ? "rgba(245,158,11,0.1)" : "transparent",
+                                            borderLeft: value == o.id ? "3px solid #f59e0b" : "3px solid transparent"
+                                        }}
+                                        onMouseEnter={e => { if(value != o.id) e.currentTarget.style.background = "#1a1a2e" }}
+                                        onMouseLeave={e => { if(value != o.id) e.currentTarget.style.background = "transparent" }}
+                                    >
+                                        {o.name} <span style={{ color: "#6b7280", fontSize: "0.7rem" }}>({o.recipeUnit})</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
         }
 
         function StatCard({ label, value, sub, accent }) {
@@ -120,6 +203,8 @@
             };
             return <button onClick={onClick} style={{ ...base, ...variants[variant], ...style }}>{children}</button>;
         }
+
+        // ─── PAGES ──────────────────────────────────────────────────────────────────
 
         function Dashboard({ ingredients, recipes, menu }) {
             const menuWithCosts = menu.map(item => {
@@ -440,19 +525,21 @@
                             </div>
 
                             <div style={{ padding: "1rem 1.5rem", borderTop: "1px solid #2a2a45", background: "#12121f" }}>
-                                <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontSize: "0.68rem", color: "#6b7280", marginBottom: 5 }}>เลือกวัตถุดิบ</div>
-                                        <select value={addIngId} onChange={e => setAddIngId(e.target.value)} style={{ width: "100%", background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 8, padding: "0.5rem 0.75rem", color: "#f1f5f9", fontSize: "0.82rem", fontFamily: "'Sora', sans-serif" }}>
-                                            {ingredients.length === 0 && <option value="">กรุณาเพิ่มวัตถุดิบก่อน</option>}
-                                            {ingredients.map(ing => <option key={ing.id} value={ing.id}>{ing.name} ({ing.recipeUnit})</option>)}
-                                        </select>
+                                <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
+                                    <div style={{ flex: 2 }}>
+                                        <div style={{ fontSize: "0.68rem", color: "#6b7280", marginBottom: 5 }}>เลือกวัตถุดิบ (พิมพ์ค้นหาได้)</div>
+                                        {/* 🚀 เปลี่ยนช่องเลือกแบบเก่า เป็นกล่องค้นหาอัจฉริยะ */}
+                                        <SearchableSelect 
+                                            options={ingredients} 
+                                            value={addIngId} 
+                                            onChange={val => setAddIngId(val)} 
+                                        />
                                     </div>
-                                    <div style={{ width: 90 }}>
+                                    <div style={{ flex: 1 }}>
                                         <div style={{ fontSize: "0.68rem", color: "#6b7280", marginBottom: 5 }}>ปริมาณ</div>
                                         <input type="number" value={addQty} onChange={e => setAddQty(e.target.value)} style={{ width: "100%", background: "#1a1a2e", border: "1px solid #2a2a45", borderRadius: 8, padding: "0.5rem 0.75rem", color: "#f1f5f9", fontSize: "0.82rem", fontFamily: "'JetBrains Mono', monospace" }} />
                                     </div>
-                                    <Btn onClick={addItem}>+ เพิ่ม</Btn>
+                                    <Btn onClick={addItem} style={{ height: "35px" }}>+ เพิ่ม</Btn>
                                 </div>
                             </div>
                         </div>
