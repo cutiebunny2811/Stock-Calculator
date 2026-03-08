@@ -189,14 +189,17 @@
             );
         }
 
-        function Btn({ children, onClick, variant = "primary", style = {}, className = "" }) {
-            const base = "border-none rounded-lg py-2.5 px-5 cursor-pointer font-['Sora'] font-semibold text-[0.82rem] transition-all active:scale-95 flex justify-center items-center ";
-            const variants = {
-                primary: "bg-gradient-to-br from-[#f59e0b] to-[#f97316] text-[#0f0f1a] shadow-lg shadow-orange-500/20",
-                ghost: "bg-[#1e1e35] text-[#94a3b8] border border-[#2a2a45]",
-                danger: "bg-red-500/10 text-red-500 border border-red-500/30",
-            };
-            return <button onClick={onClick} className={base + variants[variant] + " " + className} style={style}>{children}</button>;
+        function Btn({ children, onClick, variant = "primary", style = {}, className = "", disabled = false }) {
+            let base = "border-none rounded-lg py-2.5 px-5 cursor-pointer font-['Sora'] font-semibold text-[0.82rem] transition-all flex justify-center items-center ";
+            if (disabled) {
+                base += "opacity-50 cursor-not-allowed bg-[#2a2a45] text-[#94a3b8] ";
+            } else {
+                base += "active:scale-95 ";
+                if (variant === "primary") base += "bg-gradient-to-br from-[#f59e0b] to-[#f97316] text-[#0f0f1a] shadow-lg shadow-orange-500/20";
+                else if (variant === "ghost") base += "bg-[#1e1e35] text-[#94a3b8] border border-[#2a2a45]";
+                else if (variant === "danger") base += "bg-red-500/10 text-red-500 border border-red-500/30";
+            }
+            return <button onClick={onClick} disabled={disabled} className={base + " " + className} style={style}>{children}</button>;
         }
 
         // ─── PAGES ──────────────────────────────────────────────────────────────────
@@ -306,7 +309,6 @@
                         <Btn onClick={openAdd}>+ เพิ่ม</Btn>
                     </div>
 
-                    {/* หมวดหมู่ (เลื่อนได้บนมือถือ) */}
                     <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide" style={{ WebkitOverflowScrolling: "touch" }}>
                         {["ทั้งหมด", ...CATEGORIES].map(cat => (
                             <button key={cat} onClick={() => setFilter(cat)} 
@@ -316,7 +318,6 @@
                         ))}
                     </div>
 
-                    {/* 🚀 ตารางปรับให้รองรับการปัดซ้ายขวาบน iPhone */}
                     <div className="bg-[#1a1a2e] border border-[#2a2a45] rounded-xl overflow-hidden">
                         <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
                             <table className="w-full text-left min-w-[650px] border-collapse">
@@ -461,7 +462,6 @@
             return (
                 <div className="flex flex-col md:grid md:grid-cols-[250px_1fr] gap-4 md:gap-5 h-auto md:h-[calc(100vh-120px)] pb-10">
                     
-                    {/* 🚀 กล่องซ้าย: รายการสูตร (เรียงต่อกันบนมือถือ) */}
                     <div className="bg-[#1a1a2e] border border-[#2a2a45] rounded-xl flex flex-col h-[250px] md:h-auto flex-shrink-0">
                         <div className="p-4 border-b border-[#2a2a45] text-xs text-[#6b7280] tracking-widest uppercase font-semibold flex justify-between items-center">
                             <span>สูตรอาหารทั้งหมด</span>
@@ -495,7 +495,6 @@
                         </div>
                     </div>
 
-                    {/* 🚀 กล่องขวา: รายละเอียดสูตร */}
                     {recipe ? (
                         <div className="bg-[#1a1a2e] border border-[#2a2a45] rounded-xl flex flex-col min-h-[400px]">
                             <div className="p-4 md:p-5 border-b border-[#2a2a45] flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -564,7 +563,8 @@
 
         function MenuPage({ ingredients, recipes, menu, setMenu }) {
             const [showModal, setShowModal] = useState(false);
-            const [form, setForm] = useState({ name: "", recipeId: "", price: "" });
+            const [uploading, setUploading] = useState(false);
+            const [form, setForm] = useState({ name: "", recipeId: "", price: "", image_url: "" });
 
             useEffect(() => {
                 if(recipes.length > 0 && !form.recipeId) setForm(p => ({...p, recipeId: recipes[0].id}));
@@ -579,15 +579,57 @@
                 return { ...item, cost, pct, profit, suggested };
             });
 
+            // 🚀 ฟังก์ชันอัปโหลดรูปภาพขึ้น Supabase Storage
+            async function handleImageUpload(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                setUploading(true);
+                
+                // สุ่มชื่อไฟล์ใหม่กันชื่อซ้ำ (ใช้วันเวลาปัจจุบัน)
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${Date.now()}.${fileExt}`;
+
+                try {
+                    // 1. อัปโหลดไฟล์ไปที่ถัง 'menu-images'
+                    const { error: uploadError } = await supabaseClient.storage
+                        .from('menu-images')
+                        .upload(fileName, file);
+
+                    if (uploadError) throw uploadError;
+
+                    // 2. ขอลิงก์รูปภาพแบบ Public
+                    const { data } = supabaseClient.storage
+                        .from('menu-images')
+                        .getPublicUrl(fileName);
+
+                    // 3. เอาลิงก์มาใส่ในฟอร์มเพื่อแสดงตัวอย่าง
+                    setForm(p => ({ ...p, image_url: data.publicUrl }));
+                    
+                } catch (error) {
+                    console.error('Upload Error:', error);
+                    alert('อัปโหลดรูปล้มเหลว ลองเช็คว่าสร้าง Storage แล้วเปิดเป็น Public หรือยังครับ\n\nError: ' + error.message);
+                } finally {
+                    setUploading(false);
+                }
+            }
+
             async function save() {
-                const data = { name: form.name, recipeId: parseInt(form.recipeId), price: parseFloat(form.price) };
+                const data = { 
+                    name: form.name, 
+                    recipeId: parseInt(form.recipeId), 
+                    price: parseFloat(form.price),
+                    image_url: form.image_url || null
+                };
+                
                 const { data: inserted } = await supabaseClient.from('menus').insert([data]).select().single();
                 if(inserted) setMenu(prev => [...prev, inserted]);
                 setShowModal(false);
-                setForm({ name: "", recipeId: recipes[0]?.id || "", price: "" });
+                setForm({ name: "", recipeId: recipes[0]?.id || "", price: "", image_url: "" });
             }
 
             async function delMenu(id) {
+                if(!confirm("ต้องการลบเมนูนี้ใช่ไหม?")) return;
                 await supabaseClient.from('menus').delete().eq('id', id);
                 setMenu(prev => prev.filter(m => m.id !== id));
             }
@@ -611,16 +653,23 @@
                     <div className="grid gap-4">
                         {menuWithCosts.length === 0 && <div className="text-[#6b7280] text-center p-8 bg-[#1a1a2e] rounded-xl border border-dashed border-[#2a2a45]">ยังไม่มีข้อมูลเมนูหน้าร้าน</div>}
                         
-                        {/* 🚀 ปรับการ์ดเมนูให้พับเป็นแนวตั้งบน iPhone */}
                         {menuWithCosts.map(item => (
                             <div key={item.id} className="bg-[#1a1a2e] border border-[#2a2a45] rounded-xl p-4 md:p-5 flex flex-col md:flex-row md:items-center gap-4 md:gap-6 relative overflow-hidden">
                                 
-                                {/* แถบสีสถานะด้านซ้าย */}
                                 <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ background: fcColor(item.pct) }} />
 
-                                <div className="flex-1 pl-2">
-                                    <div className="text-base font-semibold text-[#f1f5f9] mb-1">{item.name}</div>
-                                    <div className="text-xs text-[#6b7280]">จากสูตร: {recipes.find(r => r.id === item.recipeId)?.name || "-"}</div>
+                                <div className="flex-1 pl-2 flex items-center gap-3">
+                                    <div className="w-14 h-14 md:w-16 md:h-16 rounded-xl bg-[#12121f] border border-[#2a2a45] overflow-hidden flex-shrink-0 flex items-center justify-center">
+                                        {item.image_url ? (
+                                            <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="text-2xl opacity-40">🍲</span>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <div className="text-base font-semibold text-[#f1f5f9] mb-1">{item.name}</div>
+                                        <div className="text-[0.65rem] md:text-xs text-[#6b7280]">จากสูตร: {recipes.find(r => r.id === item.recipeId)?.name || "-"}</div>
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-3 gap-2 md:gap-6 bg-[#12121f] md:bg-transparent p-3 md:p-0 rounded-lg border md:border-0 border-[#2a2a45]">
@@ -669,9 +718,35 @@
                                 {recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                             </Select>
                             <Input label="ตั้งราคาขาย (บาท)" type="number" value={form.price} onChange={e => setForm(p => ({ ...p, price: e.target.value }))} placeholder="0" />
+                            
+                            {/* 🚀 ปุ่มอัปโหลดรูปภาพโฉมใหม่ */}
+                            <div className="mb-3.5">
+                                <div className="text-[0.72rem] text-[#94a3b8] mb-1.5 tracking-wide">รูปภาพเมนู</div>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex-1 relative">
+                                        <input 
+                                            type="file" 
+                                            accept="image/*" 
+                                            onChange={handleImageUpload}
+                                            disabled={uploading}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                                        />
+                                        <div className={`w-full bg-[#1a1a2e] border border-dashed ${uploading ? 'border-[#f59e0b] animate-pulse' : 'border-[#2a2a45]'} rounded-lg py-3 px-3 text-center transition-all`}>
+                                            <span className="text-[#f1f5f9] text-[0.85rem]">
+                                                {uploading ? "กำลังอัปโหลด... ⏳" : "📷 แตะเพื่อเลือกรูปภาพ"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {form.image_url && !uploading && (
+                                        <div className="w-12 h-12 rounded-lg overflow-hidden border border-[#2a2a45] flex-shrink-0">
+                                            <img src={form.image_url} className="w-full h-full object-cover" />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
 
                             {form.price > 0 && previewCost > 0 && (
-                                <div className="bg-[#12121f] border rounded-xl p-4 mb-4" style={{ borderColor: `${fcColor(previewFc)}40` }}>
+                                <div className="bg-[#12121f] border rounded-xl p-4 mb-4 mt-2" style={{ borderColor: `${fcColor(previewFc)}40` }}>
                                     <div className="grid grid-cols-3 gap-2 text-center">
                                         <div><div className="text-xs text-[#6b7280] mb-1">ต้นทุน</div><div className="font-['JetBrains_Mono'] font-bold text-[#e2e8f0]">฿{previewCost.toFixed(1)}</div></div>
                                         <div><div className="text-xs text-[#6b7280] mb-1">กำไร/จาน</div><div className="font-['JetBrains_Mono'] font-bold text-[#22c55e]">฿{(parseFloat(form.price) - previewCost).toFixed(1)}</div></div>
@@ -680,9 +755,9 @@
                                 </div>
                             )}
 
-                            <div className="flex gap-2 justify-end">
+                            <div className="flex gap-2 justify-end mt-4">
                                 <Btn variant="ghost" onClick={() => setShowModal(false)} className="flex-1 md:flex-none">ยกเลิก</Btn>
-                                <Btn onClick={save} className="flex-1 md:flex-none">บันทึกขึ้นป้าย</Btn>
+                                <Btn onClick={save} disabled={uploading} className="flex-1 md:flex-none">บันทึกขึ้นป้าย</Btn>
                             </div>
                         </Modal>
                     )}
@@ -743,20 +818,15 @@
                     <style>{`
                         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
                         body { margin: 0; background: #0d0d1a; }
-                        /* ซ่อน Scrollbar ให้ดูคลีนๆ บนมือถือ */
                         .scrollbar-hide::-webkit-scrollbar { display: none; }
                         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
                         ::-webkit-scrollbar { width: 4px; height: 4px; }
                         ::-webkit-scrollbar-track { background: transparent; }
                         ::-webkit-scrollbar-thumb { background: #2a2a45; border-radius: 4px; }
-                        /* Safe area สำหรับ iPhone รอยบาก */
                         .pb-safe { padding-bottom: calc(0.5rem + env(safe-area-inset-bottom)); }
                     `}</style>
 
-                    {/* 🚀 โครงสร้างหลัก เปลี่ยน Layout ตามขนาดจออัตโนมัติ */}
                     <div className="flex flex-col md:flex-row h-[100dvh] bg-[#0d0d1a] font-['Sora'] text-[#f1f5f9] overflow-hidden">
-
-                        {/* 🖥️ Sidebar (แสดงเฉพาะบนจอใหญ่ / ซ่อนบนมือถือ) */}
                         <div className="hidden md:flex flex-col flex-shrink-0 w-[240px] bg-[#12121f] border-r border-[#1e1e35]">
                             <div className="p-6 border-b border-[#1e1e35]">
                                 <div className="flex items-center gap-3">
@@ -778,7 +848,6 @@
                             </nav>
                         </div>
 
-                        {/* 📝 Main Content Area (เว้นที่ด้านล่างเผื่อแถบเมนูมือถือ) */}
                         <div className="flex-1 overflow-auto p-4 md:p-8 pb-24 md:pb-8 relative scroll-smooth" style={{ WebkitOverflowScrolling: "touch" }}>
                             {tab === "dashboard" && <Dashboard ingredients={ingredients} recipes={recipes} menu={menu} />}
                             {tab === "ingredients" && <IngredientsPage ingredients={ingredients} setIngredients={setIngredients} />}
@@ -786,7 +855,6 @@
                             {tab === "menu" && <MenuPage ingredients={ingredients} recipes={recipes} menu={menu} setMenu={setMenu} />}
                         </div>
 
-                        {/* 📱 Bottom Navigation Bar (แสดงเฉพาะบนมือถือ / iPhone) */}
                         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#12121f]/95 backdrop-blur-md border-t border-[#1e1e35] flex justify-around items-end pb-safe pt-2 px-2 z-50">
                             {navItems.map(item => (
                                 <button key={item.id} onClick={() => setTab(item.id)} 
@@ -796,7 +864,6 @@
                                 </button>
                             ))}
                         </div>
-
                     </div>
                 </>
             );
