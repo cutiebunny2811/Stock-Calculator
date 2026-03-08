@@ -189,14 +189,17 @@
             );
         }
 
-        function Btn({ children, onClick, variant = "primary", style = {}, className = "" }) {
-            const base = "border-none rounded-lg py-2.5 px-5 cursor-pointer font-['Sora'] font-semibold text-[0.82rem] transition-all active:scale-95 flex justify-center items-center ";
-            const variants = {
-                primary: "bg-gradient-to-br from-[#f59e0b] to-[#f97316] text-[#0f0f1a] shadow-lg shadow-orange-500/20",
-                ghost: "bg-[#1e1e35] text-[#94a3b8] border border-[#2a2a45]",
-                danger: "bg-red-500/10 text-red-500 border border-red-500/30",
-            };
-            return <button onClick={onClick} className={base + variants[variant] + " " + className} style={style}>{children}</button>;
+        function Btn({ children, onClick, variant = "primary", style = {}, className = "", disabled = false }) {
+            let base = "border-none rounded-lg py-2.5 px-5 cursor-pointer font-['Sora'] font-semibold text-[0.82rem] transition-all flex justify-center items-center ";
+            if (disabled) {
+                base += "opacity-50 cursor-not-allowed bg-[#2a2a45] text-[#94a3b8] ";
+            } else {
+                base += "active:scale-95 ";
+                if (variant === "primary") base += "bg-gradient-to-br from-[#f59e0b] to-[#f97316] text-[#0f0f1a] shadow-lg shadow-orange-500/20";
+                else if (variant === "ghost") base += "bg-[#1e1e35] text-[#94a3b8] border border-[#2a2a45]";
+                else if (variant === "danger") base += "bg-red-500/10 text-red-500 border border-red-500/30";
+            }
+            return <button onClick={onClick} disabled={disabled} className={base + " " + className} style={style}>{children}</button>;
         }
 
         // ─── PAGES ──────────────────────────────────────────────────────────────────
@@ -560,6 +563,7 @@
 
         function MenuPage({ ingredients, recipes, menu, setMenu }) {
             const [showModal, setShowModal] = useState(false);
+            const [uploading, setUploading] = useState(false);
             const [form, setForm] = useState({ name: "", recipeId: "", price: "", image_url: "" });
 
             useEffect(() => {
@@ -574,6 +578,41 @@
                 const suggested = cost > 0 ? cost / 0.32 : 0;
                 return { ...item, cost, pct, profit, suggested };
             });
+
+            // 🚀 ฟังก์ชันอัปโหลดรูปภาพขึ้น Supabase Storage
+            async function handleImageUpload(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                setUploading(true);
+                
+                // สุ่มชื่อไฟล์ใหม่กันชื่อซ้ำ (ใช้วันเวลาปัจจุบัน)
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${Date.now()}.${fileExt}`;
+
+                try {
+                    // 1. อัปโหลดไฟล์ไปที่ถัง 'menu-images'
+                    const { error: uploadError } = await supabaseClient.storage
+                        .from('menu-images')
+                        .upload(fileName, file);
+
+                    if (uploadError) throw uploadError;
+
+                    // 2. ขอลิงก์รูปภาพแบบ Public
+                    const { data } = supabaseClient.storage
+                        .from('menu-images')
+                        .getPublicUrl(fileName);
+
+                    // 3. เอาลิงก์มาใส่ในฟอร์มเพื่อแสดงตัวอย่าง
+                    setForm(p => ({ ...p, image_url: data.publicUrl }));
+                    
+                } catch (error) {
+                    console.error('Upload Error:', error);
+                    alert('อัปโหลดรูปล้มเหลว ลองเช็คว่าสร้าง Storage แล้วเปิดเป็น Public หรือยังครับ\n\nError: ' + error.message);
+                } finally {
+                    setUploading(false);
+                }
+            }
 
             async function save() {
                 const data = { 
@@ -680,7 +719,31 @@
                             </Select>
                             <Input label="ตั้งราคาขาย (บาท)" type="number" value={form.price} onChange={e => setForm(p => ({ ...p, price: e.target.value }))} placeholder="0" />
                             
-                            <Input label="ลิงก์รูปภาพ (Image URL - ใส่หรือไม่ใส่ก็ได้)" value={form.image_url} onChange={e => setForm(p => ({ ...p, image_url: e.target.value }))} placeholder="https://..." />
+                            {/* 🚀 ปุ่มอัปโหลดรูปภาพโฉมใหม่ */}
+                            <div className="mb-3.5">
+                                <div className="text-[0.72rem] text-[#94a3b8] mb-1.5 tracking-wide">รูปภาพเมนู</div>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex-1 relative">
+                                        <input 
+                                            type="file" 
+                                            accept="image/*" 
+                                            onChange={handleImageUpload}
+                                            disabled={uploading}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                                        />
+                                        <div className={`w-full bg-[#1a1a2e] border border-dashed ${uploading ? 'border-[#f59e0b] animate-pulse' : 'border-[#2a2a45]'} rounded-lg py-3 px-3 text-center transition-all`}>
+                                            <span className="text-[#f1f5f9] text-[0.85rem]">
+                                                {uploading ? "กำลังอัปโหลด... ⏳" : "📷 แตะเพื่อเลือกรูปภาพ"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {form.image_url && !uploading && (
+                                        <div className="w-12 h-12 rounded-lg overflow-hidden border border-[#2a2a45] flex-shrink-0">
+                                            <img src={form.image_url} className="w-full h-full object-cover" />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
 
                             {form.price > 0 && previewCost > 0 && (
                                 <div className="bg-[#12121f] border rounded-xl p-4 mb-4 mt-2" style={{ borderColor: `${fcColor(previewFc)}40` }}>
@@ -694,7 +757,7 @@
 
                             <div className="flex gap-2 justify-end mt-4">
                                 <Btn variant="ghost" onClick={() => setShowModal(false)} className="flex-1 md:flex-none">ยกเลิก</Btn>
-                                <Btn onClick={save} className="flex-1 md:flex-none">บันทึกขึ้นป้าย</Btn>
+                                <Btn onClick={save} disabled={uploading} className="flex-1 md:flex-none">บันทึกขึ้นป้าย</Btn>
                             </div>
                         </Modal>
                     )}
