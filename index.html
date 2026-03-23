@@ -1,341 +1,310 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Stock Allocation</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DCA Portfolio Tracker</title>
+    <link rel="apple-touch-icon" href="https://emojicdn.elk.sh/📈">
+    <link rel="icon" href="https://emojicdn.elk.sh/📈">
     
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="StockAlloc">
-
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <style>
-        ::-webkit-scrollbar { width: 0px; background: transparent; }
-        body { -webkit-tap-highlight-color: transparent; }
-        input[type=number]::-webkit-inner-spin-button, 
-        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        .fade-in { animation: fadeIn 0.3s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-    </style>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
-<body class="bg-black text-zinc-100 antialiased min-h-screen p-4 pb-20 selection:bg-cyan-500/30 font-sans">
+<body>
+<div id="root"></div>
 
-    <div class="max-w-md mx-auto space-y-6 fade-in">
-        
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="bg-gradient-to-tr from-cyan-500 to-blue-600 p-2.5 rounded-xl shadow-lg shadow-cyan-900/20">
-                    <i data-lucide="pie-chart" class="text-white w-6 h-6"></i>
-                </div>
-                <div>
-                    <h1 class="text-xl font-bold text-white">Stock Allocation</h1>
-                    <p class="text-xs text-zinc-500">Portfolio distribution & planning</p>
-                </div>
-            </div>
-            <button onclick="toggleCurrency()" class="flex items-center bg-zinc-900 border border-zinc-800 rounded-full p-1 relative h-8 w-14 transition-colors">
-                <div id="currency-indicator" class="absolute left-1 w-6 h-6 bg-cyan-600 rounded-full flex items-center justify-center text-[10px] font-bold transition-all shadow-md">฿</div>
-                <span class="absolute right-2 text-[10px] text-zinc-600 font-bold">$</span>
-            </button>
-        </div>
+<script type="text/babel">
+const { useState, useEffect, useMemo } = React;
 
-        <div class="bg-zinc-900/80 rounded-2xl border border-zinc-800 p-5 shadow-lg">
-            <label class="block text-xs font-medium text-zinc-500 mb-2 uppercase tracking-wider flex items-center gap-2">
-                <i data-lucide="wallet" class="w-3 h-3"></i> Total Investment Capital
-            </label>
-            <div class="relative group">
-                <span id="capital-symbol" class="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-medium transition-colors group-focus-within:text-cyan-400">฿</span>
-                <input type="number" id="capital" placeholder="0" oninput="updateData()" class="w-full bg-black border border-zinc-800 rounded-xl py-3 pl-10 pr-4 text-2xl font-bold text-white focus:ring-2 focus:ring-cyan-500/30 outline-none transition-all placeholder-zinc-800">
-            </div>
-        </div>
+// 🚀 Default Data (จะใช้เฉพาะครั้งแรกที่เปิดแอป)
+const DEFAULT_ASSETS = [
+  { id: 1, name: "AAPL", targetPct: 5, bought: 0 },
+  { id: 2, name: "META", targetPct: 10, bought: 0 },
+  { id: 3, name: "GOOGL", targetPct: 15, bought: 0 },
+  { id: 4, name: "TSM", targetPct: 15, bought: 0 },
+  { id: 5, name: "AVGO", targetPct: 10, bought: 0 },
+  { id: 6, name: "ASTS", targetPct: 10, bought: 0 },
+  { id: 7, name: "NEE", targetPct: 10, bought: 0 },
+  { id: 8, name: "GLDM", targetPct: 10, bought: 0 },
+  { id: 9, name: "BTC", targetPct: 10, bought: 0 },
+];
 
-        <div class="grid grid-cols-2 gap-3">
-            <div class="bg-zinc-900/50 rounded-xl border border-zinc-800 p-4 relative overflow-hidden">
-                <div class="absolute right-0 top-0 p-3 opacity-10">
-                    <i data-lucide="check-circle" class="w-12 h-12 text-cyan-500"></i>
-                </div>
-                <p class="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Total Allocated</p>
-                <h3 id="total-allocated" class="text-2xl font-bold text-cyan-400">0%</h3>
-            </div>
-            <div class="bg-zinc-900/50 rounded-xl border border-zinc-800 p-4 relative overflow-hidden">
-                <div class="absolute right-0 top-0 p-3 opacity-10">
-                    <i data-lucide="coins" class="w-12 h-12 text-zinc-400"></i>
-                </div>
-                <p class="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Remaining Cash</p>
-                <h3 id="remaining-cash" class="text-xl font-bold text-zinc-300">0</h3>
-            </div>
-        </div>
+const DEFAULT_TRANCHES = [
+  { label: "ไม้ 1", pct: 15, color: "#00d4aa" },
+  { label: "ไม้ 2", pct: 35, color: "#f59e0b" },
+  { label: "ไม้ 3", pct: 50, color: "#ef4444" },
+];
 
-        <div class="bg-zinc-900/80 rounded-2xl border border-zinc-800 p-6 shadow-lg flex flex-col items-center justify-center relative min-h-[300px]">
-            <h3 class="absolute top-5 left-5 text-sm font-medium text-white">Visual Breakdown</h3>
-            <div class="w-64 h-64 relative mt-4">
-                <canvas id="allocationChart"></canvas>
-                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <p class="text-xs text-zinc-600 font-medium">Allocation</p>
-                </div>
-            </div>
-        </div>
+const fmt = (n) => n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const pctFmt = (n) => `${n.toFixed(2)}%`;
 
-        <div class="space-y-3">
-            <div class="flex items-center justify-between px-1">
-                <h3 class="text-lg font-bold text-white">Portfolio Holdings</h3>
-                <button onclick="addStock()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-all shadow-lg shadow-cyan-900/30 flex items-center gap-2">
-                    <i data-lucide="plus" class="w-4 h-4"></i> Add Stock
-                </button>
-            </div>
-
-            <div class="grid grid-cols-12 gap-2 px-4 py-2 text-[10px] font-bold text-zinc-600 uppercase tracking-wider">
-                <div class="col-span-4">Ticker</div>
-                <div class="col-span-3 text-center">Weight (%)</div>
-                <div class="col-span-4 text-right">Value</div>
-                <div class="col-span-1"></div>
-            </div>
-
-            <div id="stock-list" class="space-y-2 pb-10">
-                </div>
-        </div>
+function NumberInput({ value, onChange, prefix, suffix, className = "" }) {
+  return (
+    <div className={`num-input-wrap ${className}`}>
+      {prefix && <span className="num-prefix">{prefix}</span>}
+      <input
+        type="number"
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+        min={0}
+      />
+      {suffix && <span className="num-suffix">{suffix}</span>}
     </div>
+  );
+}
 
-    <script>
-        lucide.createIcons();
+function App() {
+  // 💾 1. Initialize State จาก LocalStorage
+  const [initial, setInitial] = useState(() => Number(localStorage.getItem("dca_initial")) || 70000);
+  const [added, setAdded] = useState(() => Number(localStorage.getItem("dca_added")) || 0);
+  const [assets, setAssets] = useState(() => {
+    const saved = localStorage.getItem("dca_assets");
+    return saved ? JSON.parse(saved) : DEFAULT_ASSETS;
+  });
+  const [tranches, setTranches] = useState(() => {
+    const saved = localStorage.getItem("dca_tranches");
+    return saved ? JSON.parse(saved) : DEFAULT_TRANCHES;
+  });
 
-        // --- STATE MANAGEMENT ---
-        let state = {
-            capital: 10000,
-            currency: 'THB', // 'THB' or 'USD'
-            stocks: [
-                { id: '1', symbol: 'AAPL', weight: 40 },
-                { id: '2', symbol: 'MSFT', weight: 30 },
-                { id: '3', symbol: 'GOOGL', weight: 20 }
-            ]
-        };
+  const [newName, setNewName] = useState("");
+  const [newPct, setNewPct] = useState(5);
+  const [selectedAsset, setSelectedAsset] = useState(null);
+  const [activeTab, setActiveTab] = useState("tracker");
 
-        let chartInstance = null;
+  // 💾 2. Save ข้อมูลทุกครั้งที่เปลี่ยน
+  useEffect(() => {
+    localStorage.setItem("dca_initial", initial);
+    localStorage.setItem("dca_added", added);
+    localStorage.setItem("dca_assets", JSON.stringify(assets));
+    localStorage.setItem("dca_tranches", JSON.stringify(tranches));
+  }, [initial, added, assets, tranches]);
 
-        // --- LOAD & SAVE DATA ---
-        function loadData() {
-            const saved = localStorage.getItem('stock_allocation_data');
-            if (saved) {
-                state = JSON.parse(saved);
-            }
-            // Update UI inputs from state
-            document.getElementById('capital').value = state.capital;
-            renderCurrencyUI();
-            renderStocks();
-            updateCalculations();
+  // Calculations
+  const totalCapital = initial + added;
+  const totalAllocated = assets.reduce((s, a) => s + a.targetPct, 0);
+
+  const enriched = useMemo(() =>
+    assets.map((a) => {
+      const quota = (totalCapital * a.targetPct) / 100;
+      const remaining = quota - a.bought;
+      const progress = quota > 0 ? Math.min((a.bought / quota) * 100, 100) : 0;
+      return { ...a, quota, remaining, progress };
+    }), [assets, totalCapital]
+  );
+
+  const totalBought = enriched.reduce((s, a) => s + a.bought, 0);
+  const totalRemaining = enriched.reduce((s, a) => s + Math.max(a.remaining, 0), 0);
+  const trancheTotal = tranches.reduce((s, t) => s + t.pct, 0);
+
+  // Handlers
+  function updateAsset(id, field, value) {
+    setAssets(prev => prev.map(a => a.id === id ? { ...a, [field]: value } : a));
+  }
+
+  function addAsset() {
+    if (!newName.trim()) return;
+    setAssets(prev => [...prev, { id: Date.now(), name: newName.toUpperCase(), targetPct: newPct, bought: 0 }]);
+    setNewName("");
+    setNewPct(5);
+  }
+
+  function removeAsset(id) {
+    if (confirm("ลบสินทรัพย์นี้?")) {
+      setAssets(prev => prev.filter(a => a.id !== id));
+      if (selectedAsset === id) setSelectedAsset(null);
+    }
+  }
+
+  function updateTranche(i, val) {
+    setTranches(prev => prev.map((t, idx) => idx === i ? { ...t, pct: Math.max(0, val) } : t));
+  }
+
+  return (
+    <div className="app">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+          --bg: #0a0c0f; --surface: #111318; --surface2: #181c23;
+          --border: #1f2430; --border2: #2a3040; --text: #e8eaf0;
+          --muted: #5a6070; --accent: #00d4aa; --accent2: #0088ff;
+          --warn: #f59e0b; --danger: #ef4444; --green: #22c55e;
         }
-
-        function saveData() {
-            localStorage.setItem('stock_allocation_data', JSON.stringify(state));
+        body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; min-height: 100vh; }
+        .app { max-width: 760px; margin: 0 auto; padding: 24px 16px 80px; }
+        .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px; }
+        .header-left h1 { font-family: 'Outfit', sans-serif; font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+        .header-left .sub { font-size: 11px; color: var(--muted); margin-top: 3px; letter-spacing: 1.5px; text-transform: uppercase; }
+        .badge { background: linear-gradient(135deg, #00d4aa22, #0088ff22); border: 1px solid #00d4aa44; color: var(--accent); font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 20px; text-transform: uppercase; }
+        .tabs { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 4px; margin-bottom: 24px; }
+        .tab { flex: 1; padding: 12px; border-radius: 9px; border: none; background: transparent; color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .tab.active { background: var(--surface2); color: var(--accent); border: 1px solid var(--border2); }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+        .card-title { font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .card-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+        .pool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .pool-item label { display: block; font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+        .pool-total { grid-column: 1/-1; background: linear-gradient(135deg, #00d4aa12, #0088ff08); border: 1px solid #00d4aa33; border-radius: 10px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; }
+        .pool-total-value { font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; color: var(--accent); }
+        .num-input-wrap { display: flex; align-items: center; background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; overflow: hidden; }
+        .num-input-wrap input { flex: 1; background: transparent; border: none; outline: none; color: var(--text); font-size: 14px; padding: 10px 8px; width: 100%; }
+        .num-prefix, .num-suffix { padding: 0 10px; font-size: 12px; color: var(--muted); }
+        .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+        .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+        .stat-box .s-label { font-size: 9px; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+        .stat-box .s-val { font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; }
+        .alloc-bar-wrap { margin-bottom: 16px; }
+        .alloc-track { height: 4px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+        .alloc-fill { height: 100%; transition: width 0.4s; }
+        .asset-list { display: flex; flex-direction: column; gap: 8px; }
+        .asset-row { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer; }
+        .asset-row.selected { border-color: var(--accent); background: #00d4aa08; }
+        .asset-row-top { display: grid; grid-template-columns: 80px 70px 1fr 1fr 1fr 32px; align-items: center; gap: 8px; }
+        .asset-name { font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; }
+        .prog-wrap { margin-top: 8px; height: 3px; background: var(--surface); border-radius: 3px; overflow: hidden; }
+        .prog-fill { height: 100%; transition: width 0.5s; }
+        .tranche-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+        .tranche-item { background: var(--surface); border-radius: 8px; padding: 10px; text-align: center; border: 1px solid var(--border); }
+        .tranche-item .t-amt { font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; }
+        .btn { padding: 10px 16px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; font-size: 12px; }
+        .btn-accent { background: var(--accent); color: #000; }
+        .btn-del { background: transparent; color: var(--muted); border: none; cursor: pointer; font-size: 18px; }
+        .btn-del:hover { color: var(--danger); }
+        .add-form { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+        .text-input { background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; color: var(--text); padding: 10px 12px; outline: none; width: 100px; text-transform: uppercase; }
+        .tranche-big-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+        .tranche-big-card { border-radius: 12px; padding: 16px; text-align: center; }
+        .tranche-panel { display: none; padding-top: 10px; }
+        .tranche-panel.open { display: block; }
+        @media (max-width: 600px) {
+          .asset-row-top { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: auto auto; gap: 12px; }
+          .asset-name { grid-column: 1 / 2; }
+          .btn-del { grid-column: 3 / 4; justify-self: end; }
         }
+      `}</style>
 
-        // --- LOGIC ---
+      <div className="header">
+        <div className="header-left">
+          <h1>DCA Tracker</h1>
+          <div className="sub">กระสุน · โควตา · ไม้</div>
+        </div>
+        <div className="badge">Auto-Saving ✓</div>
+      </div>
 
-        function toggleCurrency() {
-            state.currency = state.currency === 'THB' ? 'USD' : 'THB';
-            renderCurrencyUI();
-            updateCalculations();
-            saveData();
-        }
+      <div className="tabs">
+        <button className={`tab ${activeTab === "tracker" ? "active" : ""}`} onClick={() => setActiveTab("tracker")}>📊 Quota Tracker</button>
+        <button className={`tab ${activeTab === "tranche" ? "active" : ""}`} onClick={() => setActiveTab("tranche")}>🎯 คำนวนไม้ DCA</button>
+      </div>
 
-        function renderCurrencyUI() {
-            const ind = document.getElementById('currency-indicator');
-            const sym = document.getElementById('capital-symbol');
-            
-            if (state.currency === 'THB') {
-                ind.style.transform = 'translateX(0)';
-                ind.innerText = '฿';
-                ind.classList.replace('bg-green-600', 'bg-cyan-600');
-                sym.innerText = '฿';
-            } else {
-                ind.style.transform = 'translateX(24px)'; // Move toggle
-                ind.innerText = '$';
-                ind.classList.replace('bg-cyan-600', 'bg-green-600');
-                sym.innerText = '$';
-            }
-        }
+      <div className="card">
+        <div className="card-title">💰 Master Cash Pool</div>
+        <div className="pool-grid">
+          <div className="pool-item">
+            <label>เงินทุนตั้งต้น</label>
+            <NumberInput value={initial} onChange={setInitial} prefix="฿" />
+          </div>
+          <div className="pool-item">
+            <label>เงินที่เติมเพิ่ม</label>
+            <NumberInput value={added} onChange={setAdded} prefix="฿" />
+          </div>
+          <div className="pool-total">
+            <div style={{fontSize: "11px", color: "var(--accent)"}}>รวมทุนทั้งหมด</div>
+            <div className="pool-total-value">฿{fmt(totalCapital)}</div>
+          </div>
+        </div>
+      </div>
 
-        function updateData() {
-            // Update capital from input
-            const capVal = parseFloat(document.getElementById('capital').value);
-            state.capital = isNaN(capVal) ? 0 : capVal;
-            updateCalculations();
-            saveData();
-        }
+      {activeTab === "tracker" ? (
+        <>
+          <div className="stats-row">
+            <div className="stat-box">
+              <div className="s-label">ซื้อไปแล้ว</div>
+              <div className="s-val" style={{color: "var(--warn)"}}>฿{fmt(totalBought)}</div>
+            </div>
+            <div className="stat-box">
+              <div className="s-label">กระสุนเหลือ</div>
+              <div className="s-val" style={{color: "var(--accent)"}}>฿{fmt(totalRemaining)}</div>
+            </div>
+            <div className="stat-box">
+              <div className="s-label">Alloc รวม</div>
+              <div className="s-val" style={{color: totalAllocated > 100 ? "var(--danger)" : "var(--green)"}}>{pctFmt(totalAllocated)}</div>
+            </div>
+          </div>
 
-        function updateStock(id, field, value) {
-            const stock = state.stocks.find(s => s.id === id);
-            if (stock) {
-                if (field === 'symbol') stock.symbol = value.toUpperCase();
-                if (field === 'weight') stock.weight = parseFloat(value) || 0;
-            }
-            updateCalculations();
-            saveData();
-        }
+          <div className="alloc-bar-wrap">
+            <div className="alloc-track">
+              <div className="alloc-fill" style={{ width: `${Math.min(totalAllocated, 100)}%`, background: totalAllocated > 100 ? "var(--danger)" : "var(--green)" }} />
+            </div>
+          </div>
 
-        function addStock() {
-            const newId = Math.random().toString(36).substr(2, 9);
-            state.stocks.push({ id: newId, symbol: '', weight: 0 });
-            renderStocks();
-            saveData();
-        }
-
-        function deleteStock(id) {
-            state.stocks = state.stocks.filter(s => s.id !== id);
-            renderStocks();
-            updateCalculations();
-            saveData();
-        }
-
-        function formatMoney(amount) {
-            return new Intl.NumberFormat('en-US', {
-                style: 'decimal',
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            }).format(amount);
-        }
-
-        // --- RENDERERS ---
-
-        function renderStocks() {
-            const container = document.getElementById('stock-list');
-            container.innerHTML = '';
-
-            state.stocks.forEach(stock => {
-                const stockValue = state.capital * (stock.weight / 100);
-                const currencySym = state.currency === 'THB' ? '฿' : '$';
-
-                const html = `
-                <div class="grid grid-cols-12 gap-2 items-center bg-zinc-900 border border-zinc-800 p-3 rounded-xl fade-in group focus-within:border-cyan-500/50 transition-colors">
-                    <div class="col-span-4">
-                        <input type="text" value="${stock.symbol}" 
-                            oninput="updateStock('${stock.id}', 'symbol', this.value)"
-                            placeholder="TICKER" 
-                            class="w-full bg-transparent text-white font-bold uppercase placeholder-zinc-700 outline-none">
-                    </div>
-                    <div class="col-span-3">
-                        <input type="number" value="${stock.weight}" 
-                            oninput="updateStock('${stock.id}', 'weight', this.value)"
-                            placeholder="0" 
-                            class="w-full bg-black/50 text-cyan-400 font-bold text-center rounded-lg py-1 border border-zinc-800 focus:border-cyan-500/50 outline-none">
-                    </div>
-                    <div class="col-span-4 text-right">
-                        <span class="text-xs text-zinc-500 mr-1">${currencySym}</span>
-                        <span class="text-sm font-medium text-zinc-300">${formatMoney(stockValue)}</span>
-                    </div>
-                    <div class="col-span-1 text-right">
-                        <button onclick="deleteStock('${stock.id}')" class="text-zinc-600 hover:text-rose-500 transition-colors">
-                            <i data-lucide="trash-2" width="16"></i>
-                        </button>
-                    </div>
+          <div className="asset-list">
+            {enriched.map(a => (
+              <div key={a.id} className={`asset-row ${selectedAsset === a.id ? "selected" : ""}`} onClick={() => setSelectedAsset(selectedAsset === a.id ? null : a.id)}>
+                <div className="asset-row-top">
+                  <div className="asset-name">{a.name}</div>
+                  <div onClick={e => e.stopPropagation()}><NumberInput value={a.targetPct} onChange={v => updateAsset(a.id, "targetPct", v)} suffix="%" /></div>
+                  <div style={{textAlign: "right"}}><div style={{fontSize: "9px", color: "var(--muted)"}}>โควตา</div><div style={{fontSize: "12px", color: "var(--accent)"}}>฿{fmt(a.quota)}</div></div>
+                  <div onClick={e => e.stopPropagation()}><NumberInput value={a.bought} onChange={v => updateAsset(a.id, "bought", v)} prefix="฿" /></div>
+                  <div style={{textAlign: "right"}}><div style={{fontSize: "9px", color: "var(--muted)"}}>คงเหลือ</div><div style={{fontSize: "12px", color: a.remaining <= 0 ? "var(--green)" : "var(--danger)"}}>{a.remaining <= 0 ? "เต็ม" : fmt(a.remaining)}</div></div>
+                  <button className="btn-del" onClick={e => { e.stopPropagation(); removeAsset(a.id); }}>×</button>
                 </div>
-                `;
-                container.insertAdjacentHTML('beforeend', html);
-            });
-            lucide.createIcons();
-        }
+                <div className="prog-wrap"><div className="prog-fill" style={{ width: `${a.progress}%`, background: a.progress >= 100 ? "var(--green)" : "var(--accent)" }} /></div>
+                
+                <div className={`tranche-panel ${selectedAsset === a.id ? "open" : ""}`}>
+                  <div className="tranche-grid">
+                    {tranches.map(t => (
+                      <div key={t.label} className="tranche-item" style={{borderColor: t.color + "44"}}>
+                        <div style={{fontSize: "10px", color: t.color, fontWeight: 700}}>{t.label}</div>
+                        <div className="t-amt" style={{color: t.color}}>฿{fmt(Math.max((a.remaining * t.pct) / 100, 0))}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
 
-        function updateCalculations() {
-            // 1. Calc Total Allocated
-            const totalWeight = state.stocks.reduce((sum, s) => sum + s.weight, 0);
-            const totalAllocatedElem = document.getElementById('total-allocated');
-            totalAllocatedElem.innerText = totalWeight.toFixed(2) + '%';
-            
-            if (totalWeight > 100) totalAllocatedElem.className = 'text-2xl font-bold text-rose-500';
-            else if (totalWeight === 100) totalAllocatedElem.className = 'text-2xl font-bold text-emerald-400';
-            else totalAllocatedElem.className = 'text-2xl font-bold text-cyan-400';
+          <div className="card" style={{marginTop: "16px"}}>
+            <div className="card-title">➕ เพิ่มสินทรัพย์</div>
+            <div className="add-form">
+              <input className="text-input" placeholder="TICKER" value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === "Enter" && addAsset()} />
+              <NumberInput value={newPct} onChange={setNewPct} suffix="%" />
+              <button className="btn btn-accent" onClick={addAsset}>+ เพิ่มหุ้น</button>
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="card">
+            <div className="card-title">⚙️ ตั้งค่าไม้ DCA</div>
+            <div style={{display: "flex", gap: "10px"}}>
+              {tranches.map((t, i) => (
+                <div key={i} style={{flex: 1}}>
+                  <label style={{fontSize: "10px", color: t.color, fontWeight: 700}}>{t.label}</label>
+                  <NumberInput value={t.pct} onChange={v => updateTranche(i, v)} suffix="%" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="card">
+            <div className="card-title">🎯 สรุปยอดซื้อตามไม้ (รวมโควตาที่เหลือ)</div>
+            <div className="tranche-big-grid">
+              {tranches.map(t => (
+                <div key={t.label} className="tranche-big-card" style={{background: t.color + "12", border: `1px solid ${t.color}44`}}>
+                  <div style={{fontSize: "12px", color: t.color, fontWeight: 700, marginBottom: "4px"}}>{t.label} ({t.pct}%)</div>
+                  <div style={{fontSize: "18px", fontWeight: 800, color: t.color}}>฿{fmt((totalRemaining * t.pct) / 100)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
-            // 2. Calc Remaining Cash
-            const remaining = state.capital * ((100 - totalWeight) / 100);
-            const remainingElem = document.getElementById('remaining-cash');
-            const currencySym = state.currency === 'THB' ? '฿' : '$';
-            remainingElem.innerText = `${currencySym} ${formatMoney(remaining > 0 ? remaining : 0)}`;
-
-            // 3. Re-render values in list (quick fix to update calculated values visually without re-rendering inputs)
-            // Ideally we re-render specific DOM elements, but for simplicity here we assume inputs are bound.
-            // Actually, let's just re-render list if we aren't editing? 
-            // Better: update the text spans directly.
-            const listItems = document.getElementById('stock-list').children;
-            Array.from(listItems).forEach((item, index) => {
-                const stock = state.stocks[index];
-                if(stock) {
-                    const valSpan = item.querySelector('.col-span-4.text-right span:last-child');
-                    const symSpan = item.querySelector('.col-span-4.text-right span:first-child');
-                    const val = state.capital * (stock.weight / 100);
-                    valSpan.innerText = formatMoney(val);
-                    symSpan.innerText = currencySym;
-                }
-            });
-
-            updateChart();
-        }
-
-        // --- CHART ---
-        function updateChart() {
-            const ctx = document.getElementById('allocationChart').getContext('2d');
-            
-            // Prepare Data
-            const labels = state.stocks.map(s => s.symbol || 'N/A');
-            const data = state.stocks.map(s => s.weight);
-            const totalWeight = data.reduce((a, b) => a + b, 0);
-            
-            // Add "Cash" segment if < 100%
-            if (totalWeight < 100) {
-                labels.push('CASH');
-                data.push(100 - totalWeight);
-            }
-
-            // Colors
-            const colors = [
-                '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e', '#f97316', '#eab308', '#22c55e'
-            ];
-            // If Cash is last
-            const bgColors = state.stocks.map((_, i) => colors[i % colors.length]);
-            if (totalWeight < 100) bgColors.push('#27272a'); // Zinc-800 for cash
-
-            if (chartInstance) {
-                chartInstance.data.labels = labels;
-                chartInstance.data.datasets[0].data = data;
-                chartInstance.data.datasets[0].backgroundColor = bgColors;
-                chartInstance.update();
-            } else {
-                chartInstance = new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            data: data,
-                            backgroundColor: bgColors,
-                            borderWidth: 0,
-                            hoverOffset: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        cutout: '75%',
-                        plugins: {
-                            legend: {
-                                position: 'bottom',
-                                labels: { 
-                                    color: '#71717a', 
-                                    font: { size: 10 },
-                                    usePointStyle: true,
-                                    boxWidth: 6
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-        }
-
-        // Init App
-        loadData();
-
-    </script>
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
 </body>
 </html>
