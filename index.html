@@ -1,33 +1,471 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DCA Portfolio Tracker</title>
-    <link rel="apple-touch-icon" href="https://emojicdn.elk.sh/📈">
-    <link rel="icon" href="https://emojicdn.elk.sh/📈">
-    
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0a0c0f">
+  <title>DCA Tracker</title>
+  <link rel="apple-touch-icon" href="https://emojicdn.elk.sh/📈">
+  <link rel="icon" href="https://emojicdn.elk.sh/📈">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0c0f;
+      --surface: #111318;
+      --surface2: #181c23;
+      --border: #1f2430;
+      --border2: #2a3040;
+      --text: #e8eaf0;
+      --muted: #5a6070;
+      --accent: #00d4aa;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --green: #22c55e;
+      --font-body: 'Plus Jakarta Sans', sans-serif;
+      --font-display: 'Outfit', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    input[type=number] { -moz-appearance: textfield; }
+
+    .app {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 24px 16px 100px;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 28px;
+    }
+    .header h1 {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .header .sub {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-top: 3px;
+    }
+    .badge {
+      background: #00d4aa15;
+      border: 1px solid #00d4aa40;
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 20px;
+      letter-spacing: 1px;
+    }
+    .save-indicator {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-top: 4px;
+    }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 4px;
+      margin-bottom: 24px;
+    }
+    .tab {
+      flex: 1;
+      padding: 11px;
+      border-radius: 11px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab.active {
+      background: var(--surface2);
+      color: var(--accent);
+      border: 1px solid var(--border2);
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Number Input ── */
+    .num-wrap {
+      display: flex;
+      align-items: center;
+      background: var(--surface2);
+      border: 1.5px solid var(--border2);
+      border-radius: 10px;
+      overflow: hidden;
+      height: 44px;
+      transition: border-color 0.2s;
+    }
+    .num-wrap:focus-within { border-color: var(--accent); }
+    .num-wrap input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-weight: 600;
+      padding: 0 12px;
+      width: 100%;
+    }
+    .num-affix {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 0 12px;
+      background: var(--surface);
+      height: 100%;
+      display: flex;
+      align-items: center;
+      border-right: 1px solid var(--border2);
+      flex-shrink: 0;
+    }
+    .num-affix.right {
+      border-right: none;
+      border-left: 1px solid var(--border2);
+    }
+
+    /* ── Master Cash Pool ── */
+    .pool-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .pool-label {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 7px;
+      font-weight: 600;
+    }
+    .pool-total {
+      grid-column: 1/-1;
+      background: #00d4aa0e;
+      border: 1px solid #00d4aa30;
+      border-radius: 12px;
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 4px;
+    }
+    .pool-total-label { font-size: 12px; color: var(--accent); font-weight: 700; }
+    .pool-total-value {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--accent);
+    }
+
+    /* ── Stats Row ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .stat-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .stat-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 7px; font-weight: 600; }
+    .stat-value { font-family: var(--font-display); font-size: 16px; font-weight: 700; }
+
+    /* ── Alloc Bar ── */
+    .alloc-bar-wrap { margin-bottom: 16px; }
+    .alloc-bar-top {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    .alloc-track { height: 4px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+    .alloc-fill { height: 100%; border-radius: 4px; transition: width 0.4s; }
+
+    /* ── Table Header ── */
+    .table-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--muted);
+      padding: 0 6px;
+      margin-bottom: 8px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* ── Asset Row ── */
+    .asset-row {
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .asset-row:hover { border-color: var(--border2); }
+    .asset-row.selected { border-color: var(--accent); background: #00d4aa08; }
+    .asset-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .asset-name {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .asset-fields {
+      display: grid;
+      grid-template-columns: 90px 1fr 1fr;
+      gap: 10px;
+      align-items: end;
+    }
+    .field-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; font-weight: 600; }
+    .remaining-val {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 800;
+      text-align: right;
+    }
+    .quota-hint { font-size: 9px; color: var(--muted); text-align: right; margin-bottom: 5px; }
+    .progress-bar { height: 4px; background: var(--surface); border-radius: 4px; margin-top: 12px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s cubic-bezier(0.4,0,0.2,1); }
+    .btn-del {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 22px;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+      transition: color 0.15s;
+    }
+    .btn-del:hover { color: var(--danger); }
+
+    /* ── Tranche Panel (expanded) ── */
+    .tranche-panel { display: none; }
+    .tranche-panel.open {
+      display: block;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .tranche-hint {
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+    .tranche-mini-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .tranche-mini {
+      border-radius: 10px;
+      padding: 10px 8px;
+      text-align: center;
+    }
+    .tranche-mini .tm-label { font-size: 10px; font-weight: 700; margin-bottom: 2px; }
+    .tranche-mini .tm-pct { font-size: 9px; color: var(--muted); margin-bottom: 6px; }
+    .tranche-mini .tm-amt { font-family: var(--font-display); font-size: 14px; font-weight: 700; }
+
+    /* ── Add Asset ── */
+    .add-form { display: flex; gap: 10px; align-items: flex-end; }
+    .add-form .text-input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1.5px solid var(--border2);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-weight: 600;
+      padding: 0 14px;
+      height: 44px;
+      outline: none;
+      text-transform: uppercase;
+      transition: border-color 0.2s;
+    }
+    .add-form .text-input:focus { border-color: var(--accent); }
+    .add-form .pct-wrap { width: 100px; }
+    .btn-add {
+      height: 44px;
+      padding: 0 18px;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.15s;
+    }
+    .btn-add:hover { opacity: 0.85; }
+
+    /* ── Tranche Tab ── */
+    .tranche-settings {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+    .tranche-settings .t-field { flex: 1; min-width: 70px; }
+    .tranche-settings .t-field-label { font-size: 10px; font-weight: 700; margin-bottom: 6px; }
+    .tranche-total-badge {
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      align-self: flex-end;
+      height: 44px;
+      display: flex;
+      align-items: center;
+    }
+    .tranche-warn { font-size: 10px; color: var(--danger); margin-top: 10px; }
+
+    .tranche-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .tranche-big-card {
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+    .tranche-big-card .tb-label { font-family: var(--font-display); font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+    .tranche-big-card .tb-pct { font-size: 9px; color: var(--muted); margin-bottom: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+    .tranche-big-card .tb-amount { font-family: var(--font-display); font-size: 20px; font-weight: 800; }
+    .tranche-big-card .tb-sub { font-size: 9px; color: var(--muted); margin-top: 4px; }
+
+    .per-asset-row {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+    .par-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .par-name { font-family: var(--font-display); font-size: 15px; font-weight: 700; }
+    .par-quota { font-size: 11px; color: var(--muted); font-weight: 600; }
+    .par-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .par-t {
+      border-radius: 8px;
+      padding: 10px 8px;
+      text-align: center;
+    }
+    .par-t .pt-label { font-size: 10px; font-weight: 700; margin-bottom: 2px; }
+    .par-t .pt-amt { font-family: var(--font-display); font-size: 14px; font-weight: 700; margin-top: 2px; }
+    .par-t .pt-pct { font-size: 9px; margin-top: 2px; }
+
+    .empty-state { text-align: center; color: var(--green); padding: 30px; font-size: 13px; font-weight: 600; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+  </style>
 </head>
 <body>
-<div id="root"></div>
+<div class="app" id="app"></div>
 
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script type="text/babel">
 const { useState, useEffect, useMemo } = React;
 
-// ─── Default Config ─────────────────────────────────────────────────────────
 const DEFAULT_ASSETS = [
-  { id: 1, name: "AAPL", targetPct: 5, bought: 0 },
-  { id: 2, name: "META", targetPct: 10, bought: 0 },
+  { id: 1, name: "AAPL",  targetPct: 5,  bought: 0 },
+  { id: 2, name: "META",  targetPct: 10, bought: 0 },
   { id: 3, name: "GOOGL", targetPct: 15, bought: 0 },
-  { id: 4, name: "TSM", targetPct: 15, bought: 0 },
-  { id: 5, name: "AVGO", targetPct: 10, bought: 0 },
-  { id: 6, name: "ASTS", targetPct: 10, bought: 0 },
-  { id: 7, name: "NEE", targetPct: 10, bought: 0 },
-  { id: 8, name: "GLDM", targetPct: 10, bought: 0 },
-  { id: 9, name: "BTC", targetPct: 10, bought: 0 },
+  { id: 4, name: "TSM",   targetPct: 15, bought: 0 },
+  { id: 5, name: "AVGO",  targetPct: 10, bought: 0 },
+  { id: 6, name: "ASTS",  targetPct: 10, bought: 0 },
+  { id: 7, name: "NEE",   targetPct: 10, bought: 0 },
+  { id: 8, name: "GLDM",  targetPct: 10, bought: 0 },
+  { id: 9, name: "BTC",   targetPct: 10, bought: 0 },
 ];
 
 const DEFAULT_TRANCHES = [
@@ -37,275 +475,296 @@ const DEFAULT_TRANCHES = [
 ];
 
 const fmt = (n) => n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const pctFmt = (n) => `${n.toFixed(2)}%`;
 
-// ─── NumberInput (ปรับปรุงใหม่: เอาปุ่มออกและขยายช่อง) ──────────────────────────
-function NumberInput({ value, onChange, prefix, suffix, textAlign = "left" }) {
+function NumInput({ value, onChange, prefix, suffix, center = false }) {
   return (
-    <div className="input-field-container">
-      {prefix && <span className="input-affix">{prefix}</span>}
+    <div className="num-wrap">
+      {prefix && <span className="num-affix">{prefix}</span>}
       <input
         type="number"
         value={value === 0 ? "" : value}
         placeholder="0"
-        onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-        style={{ textAlign }}
+        onChange={e => onChange(parseFloat(e.target.value) || 0)}
+        style={{ textAlign: center ? "center" : "left" }}
       />
-      {suffix && <span className="input-affix">{suffix}</span>}
+      {suffix && <span className="num-affix right">{suffix}</span>}
     </div>
   );
 }
 
 function App() {
-  // 💾 State Management
-  const [initial, setInitial] = useState(() => Number(localStorage.getItem("dca_initial")) || 70000);
-  const [added, setAdded] = useState(() => Number(localStorage.getItem("dca_added")) || 0);
-  const [assets, setAssets] = useState(() => {
-    const saved = localStorage.getItem("dca_assets");
-    return saved ? JSON.parse(saved) : DEFAULT_ASSETS;
-  });
-  const [tranches, setTranches] = useState(() => {
-    const saved = localStorage.getItem("dca_tranches");
-    return saved ? JSON.parse(saved) : DEFAULT_TRANCHES;
-  });
+  const load = (key, def) => {
+    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; }
+    catch { return def; }
+  };
 
-  const [newName, setNewName] = useState("");
-  const [newPct, setNewPct] = useState(5);
-  const [selectedAsset, setSelectedAsset] = useState(null);
-  const [activeTab, setActiveTab] = useState("tracker");
+  const [initial,  setInitial]  = useState(() => load("dca_initial", 70000));
+  const [added,    setAdded]    = useState(() => load("dca_added", 0));
+  const [assets,   setAssets]   = useState(() => load("dca_assets", DEFAULT_ASSETS));
+  const [tranches, setTranches] = useState(() => load("dca_tranches", DEFAULT_TRANCHES));
+  const [newName,  setNewName]  = useState("");
+  const [newPct,   setNewPct]   = useState(5);
+  const [selected, setSelected] = useState(null);
+  const [tab,      setTab]      = useState("tracker");
+  const [saved,    setSaved]    = useState(false);
 
+  // Auto-save
   useEffect(() => {
-    localStorage.setItem("dca_initial", initial);
-    localStorage.setItem("dca_added", added);
-    localStorage.setItem("dca_assets", JSON.stringify(assets));
+    localStorage.setItem("dca_initial",  JSON.stringify(initial));
+    localStorage.setItem("dca_added",    JSON.stringify(added));
+    localStorage.setItem("dca_assets",   JSON.stringify(assets));
     localStorage.setItem("dca_tranches", JSON.stringify(tranches));
+    setSaved(true);
+    const t = setTimeout(() => setSaved(false), 1200);
+    return () => clearTimeout(t);
   }, [initial, added, assets, tranches]);
 
-  // Calculations
-  const totalCapital = initial + added;
+  const totalCapital   = initial + added;
   const totalAllocated = assets.reduce((s, a) => s + a.targetPct, 0);
+  const trancheTotal   = tranches.reduce((s, t) => s + t.pct, 0);
+
   const enriched = useMemo(() =>
-    assets.map((a) => {
-      const quota = (totalCapital * a.targetPct) / 100;
+    assets.map(a => {
+      const quota     = (totalCapital * a.targetPct) / 100;
       const remaining = quota - a.bought;
-      const progress = quota > 0 ? Math.min((a.bought / quota) * 100, 100) : 0;
+      const progress  = quota > 0 ? Math.min((a.bought / quota) * 100, 100) : 0;
       return { ...a, quota, remaining, progress };
     }), [assets, totalCapital]
   );
-  const totalBought = enriched.reduce((s, a) => s + a.bought, 0);
-  const totalRemaining = totalCapital - totalBought;
 
-  // Handlers
-  const updateAsset = (id, field, value) => setAssets(prev => prev.map(a => a.id === id ? { ...a, [field]: value } : a));
-  const addAsset = () => {
-    if (!newName.trim()) return;
-    setAssets(prev => [...prev, { id: Date.now(), name: newName.toUpperCase(), targetPct: newPct, bought: 0 }]);
-    setNewName(""); setNewPct(5);
-  };
-  const removeAsset = (id) => { if (confirm("ลบสินทรัพย์นี้?")) setAssets(prev => prev.filter(a => a.id !== id)); };
+  const totalBought    = enriched.reduce((s, a) => s + a.bought, 0);
+  const totalRemaining = enriched.reduce((s, a) => s + Math.max(a.remaining, 0), 0);
+
+  const updateAsset  = (id, field, val) => setAssets(p => p.map(a => a.id === id ? { ...a, [field]: val } : a));
+  const removeAsset  = (id) => { if (confirm("ลบสินทรัพย์นี้?")) { setAssets(p => p.filter(a => a.id !== id)); if (selected === id) setSelected(null); } };
+  const addAsset     = () => { if (!newName.trim()) return; setAssets(p => [...p, { id: Date.now(), name: newName.toUpperCase(), targetPct: newPct, bought: 0 }]); setNewName(""); setNewPct(5); };
+  const updateTranche = (i, val) => setTranches(p => p.map((t, idx) => idx === i ? { ...t, pct: Math.max(0, val) } : t));
+
+  const allocColor = Math.abs(totalAllocated - 100) < 0.01 ? "var(--green)" : "var(--danger)";
 
   return (
-    <div className="container">
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
-        
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #0a0c0f; color: #e8eaf0; font-family: 'Plus Jakarta Sans', sans-serif; }
-        
-        /* ซ่อนปุ่มเพิ่มลดของช่อง Number */
-        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button {
-          -webkit-appearance: none; margin: 0;
-        }
-
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; padding-bottom: 100px; }
-        
-        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; }
-        .header h1 { font-family: 'Outfit', sans-serif; font-size: 28px; font-weight: 800; }
-        .header .sub { font-size: 11px; color: #5a6070; text-transform: uppercase; letter-spacing: 1.5px; }
-        .pro-badge { background: #00d4aa15; border: 1px solid #00d4aa40; color: #00d4aa; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
-
-        .tabs { display: flex; background: #111318; padding: 4px; border-radius: 12px; margin-bottom: 24px; border: 1px solid #1f2430; }
-        .tab { flex: 1; padding: 12px; border-radius: 10px; border: none; background: transparent; color: #5a6070; font-weight: 600; cursor: pointer; transition: 0.2s; }
-        .tab.active { background: #181c23; color: #00d4aa; border: 1px solid #2a3040; }
-
-        .card { background: #111318; border: 1px solid #1f2430; border-radius: 16px; padding: 20px; margin-bottom: 16px; }
-        .card-title { font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 700; color: #5a6070; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
-        .card-title::after { content: ''; flex: 1; height: 1px; background: #1f2430; }
-
-        /* การตั้งค่า Input ช่องกรอก */
-        .input-field-container { display: flex; align-items: center; background: #181c23; border: 1px solid #2a3040; border-radius: 10px; overflow: hidden; height: 44px; width: 100%; }
-        .input-field-container:focus-within { border-color: #00d4aa; }
-        .input-field-container input { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-size: 16px; font-weight: 600; padding: 0 12px; width: 100%; }
-        .input-affix { color: #5a6070; font-size: 13px; font-weight: 600; padding: 0 12px; background: #111318; height: 100%; display: flex; align-items: center; }
-
-        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
-        .stat-box { background: #111318; border: 1px solid #1f2430; padding: 15px; border-radius: 14px; }
-        .stat-label { font-size: 9px; color: #5a6070; text-transform: uppercase; margin-bottom: 6px; }
-        .stat-value { font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; }
-
-        .asset-row { background: #181c23; border: 1px solid #1f2430; border-radius: 14px; padding: 16px; margin-bottom: 10px; cursor: pointer; transition: 0.2s; }
-        .asset-row:hover { border-color: #2a3040; }
-        .asset-row.selected { border-color: #00d4aa; background: #00d4aa08; }
-        .asset-grid { display: grid; grid-template-columns: 80px 80px 1fr; gap: 12px; align-items: end; }
-        .asset-name { font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; margin-bottom: 8px; }
-        
-        .progress-bar { height: 4px; background: #111318; border-radius: 4px; margin-top: 12px; overflow: hidden; }
-        .progress-fill { height: 100%; transition: width 0.5s; }
-
-        .btn { padding: 12px; border-radius: 10px; border: none; font-weight: 700; cursor: pointer; font-size: 13px; transition: 0.2s; }
-        .btn-primary { background: #00d4aa; color: #000; }
-        .btn-del { color: #5a6070; background: transparent; font-size: 20px; }
-        .btn-del:hover { color: #ef4444; }
-
-        .tranche-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 15px; }
-        .tranche-item { background: #111318; border: 1px solid #1f2430; border-radius: 10px; padding: 12px; text-align: center; }
-        .tranche-item .t-amt { font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; margin-top: 4px; }
-      `}</style>
-
+    <div>
+      {/* Header */}
       <div className="header">
         <div>
-          <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <h1>DCA Tracker</h1>
-            <span className="pro-badge">PRO</span>
+            <span className="badge">Portfolio</span>
           </div>
-          <div className="sub">Dollar Cost Averaging Portfolio</div>
+          <div className="sub">Dollar Cost Averaging</div>
         </div>
-        <div style={{color: '#00d4aa', fontSize: '10px', fontWeight: '800'}}>AUTO-SAVING ✓</div>
+        <div style={{ textAlign: "right" }}>
+          <div className="save-indicator">{saved ? "✓ SAVED" : "AUTO-SAVE"}</div>
+        </div>
       </div>
 
+      {/* Tabs */}
       <div className="tabs">
-        <button className={`tab ${activeTab === "tracker" ? "active" : ""}`} onClick={() => setActiveTab("tracker")}>📊 Quota Tracker</button>
-        <button className={`tab ${activeTab === "tranche" ? "active" : ""}`} onClick={() => setActiveTab("tranche")}>🎯 คำนวณไม้ DCA</button>
+        <button className={`tab ${tab === "tracker" ? "active" : ""}`} onClick={() => setTab("tracker")}>📊 Quota Tracker</button>
+        <button className={`tab ${tab === "tranche" ? "active" : ""}`} onClick={() => setTab("tranche")}>🎯 คำนวณไม้ DCA</button>
       </div>
 
-      {/* 💳 Master Cash Pool */}
+      {/* Master Cash Pool */}
       <div className="card">
         <div className="card-title">💰 Master Cash Pool</div>
-        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
+        <div className="pool-grid">
           <div>
-            <div style={{fontSize: '10px', color: '#5a6070', marginBottom: '6px', textTransform: 'uppercase'}}>ทุนตั้งต้น</div>
-            <NumberInput value={initial} onChange={setInitial} prefix="฿" />
+            <div className="pool-label">ทุนตั้งต้น</div>
+            <NumInput value={initial} onChange={setInitial} prefix="฿" />
           </div>
           <div>
-            <div style={{fontSize: '10px', color: '#5a6070', marginBottom: '6px', textTransform: 'uppercase'}}>เงินที่เติมเพิ่ม</div>
-            <NumberInput value={added} onChange={setAdded} prefix="฿" />
+            <div className="pool-label">เงินที่เติมเพิ่ม</div>
+            <NumInput value={added} onChange={setAdded} prefix="฿" />
           </div>
-        </div>
-        <div style={{marginTop: '15px', padding: '15px', background: '#00d4aa10', borderRadius: '12px', border: '1px solid #00d4aa30', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-          <div style={{fontSize: '12px', color: '#00d4aa', fontWeight: '700'}}>เงินทุนรวมทั้งหมด</div>
-          <div style={{fontSize: '22px', fontWeight: '800', color: '#00d4aa'}}>฿{fmt(totalCapital)}</div>
+          <div className="pool-total">
+            <div className="pool-total-label">รวมเงินทุนทั้งหมด</div>
+            <div className="pool-total-value">฿{fmt(totalCapital)}</div>
+          </div>
         </div>
       </div>
 
-      {activeTab === "tracker" ? (
-        <>
-          <div className="stats-grid">
-            <div className="stat-box">
-              <div className="stat-label">ซื้อไปแล้ว</div>
-              <div className="stat-value" style={{color: '#f59e0b'}}>฿{fmt(totalBought)}</div>
-            </div>
-            <div className="stat-box">
-              <div className="stat-label">กระสุนเหลือ</div>
-              <div className="stat-value" style={{color: '#00d4aa'}}>฿{fmt(totalRemaining)}</div>
-            </div>
-            <div className="stat-box">
-              <div className="stat-label">ALLOC รวม</div>
-              <div className="stat-value" style={{color: totalAllocated === 100 ? '#22c55e' : '#ef4444'}}>{pctFmt(totalAllocated)}</div>
-            </div>
+      {/* ══ TAB: TRACKER ══ */}
+      {tab === "tracker" && <>
+        <div className="stats-row">
+          <div className="stat-box">
+            <div className="stat-label">ซื้อไปแล้ว</div>
+            <div className="stat-value" style={{ color: "var(--warn)" }}>฿{fmt(totalBought)}</div>
           </div>
-
-          <div style={{marginBottom: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#5a6070', padding: '0 5px'}}>
-            <span>สินทรัพย์ / เป้าหมาย %</span>
-            <span>ยอดซื้อแล้ว / โควตาคงเหลือ</span>
+          <div className="stat-box">
+            <div className="stat-label">กระสุนเหลือ</div>
+            <div className="stat-value" style={{ color: "var(--accent)" }}>฿{fmt(totalRemaining)}</div>
           </div>
+          <div className="stat-box">
+            <div className="stat-label">Alloc รวม</div>
+            <div className="stat-value" style={{ color: allocColor }}>{totalAllocated.toFixed(1)}%</div>
+          </div>
+        </div>
 
-          {enriched.map(a => (
-            <div key={a.id} className={`asset-row ${selectedAsset === a.id ? "selected" : ""}`} onClick={() => setSelectedAsset(selectedAsset === a.id ? null : a.id)}>
-              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
-                <div className="asset-name">{a.name}</div>
-                <button className="btn-del" onClick={e => { e.stopPropagation(); removeAsset(a.id); }}>×</button>
-              </div>
-              
-              <div className="asset-grid">
-                <div onClick={e => e.stopPropagation()}>
-                   <div style={{fontSize: '9px', color: '#5a6070', marginBottom: '4px'}}>เป้าหมาย</div>
-                   <NumberInput value={a.targetPct} onChange={v => updateAsset(a.id, "targetPct", v)} suffix="%" textAlign="center" />
-                </div>
-                <div onClick={e => e.stopPropagation()}>
-                   <div style={{fontSize: '9px', color: '#5a6070', marginBottom: '4px'}}>ซื้อแล้ว</div>
-                   <NumberInput value={a.bought} onChange={v => updateAsset(a.id, "bought", v)} prefix="฿" textAlign="center" />
-                </div>
-                <div style={{textAlign: 'right'}}>
-                   <div style={{fontSize: '9px', color: '#5a6070', marginBottom: '4px'}}>โควตา ฿{fmt(a.quota)}</div>
-                   <div style={{fontSize: '15px', fontWeight: '800', color: a.remaining <= 0 ? '#22c55e' : '#ef4444'}}>
-                     {a.remaining <= 0 ? "✓ FULL" : `฿${fmt(a.remaining)}`}
-                   </div>
-                </div>
-              </div>
+        <div className="alloc-bar-wrap">
+          <div className="alloc-bar-top">
+            <span>Allocation</span>
+            <span style={{ color: allocColor }}>
+              {totalAllocated > 100 ? `เกิน ${(totalAllocated - 100).toFixed(1)}%`
+               : totalAllocated < 100 ? `เหลือ ${(100 - totalAllocated).toFixed(1)}%`
+               : "✓ ครบ 100%"}
+            </span>
+          </div>
+          <div className="alloc-track">
+            <div className="alloc-fill" style={{
+              width: `${Math.min(totalAllocated, 100)}%`,
+              background: totalAllocated > 100 ? "var(--danger)" : totalAllocated === 100 ? "var(--green)" : "var(--accent)"
+            }} />
+          </div>
+        </div>
 
-              <div className="progress-bar">
-                <div className="progress-fill" style={{ width: `${a.progress}%`, background: a.progress >= 100 ? '#22c55e' : '#00d4aa' }} />
-              </div>
+        <div className="table-header">
+          <span>สินทรัพย์ / เป้าหมาย %</span>
+          <span>ซื้อแล้ว / โควตาเหลือ</span>
+        </div>
 
-              {selectedAsset === a.id && (
-                <div className="tranche-grid" onClick={e => e.stopPropagation()}>
-                  {tranches.map(t => (
-                    <div key={t.label} className="tranche-item" style={{borderColor: t.color + '40'}}>
-                      <div style={{fontSize: '10px', color: t.color, fontWeight: '700'}}>{t.label}</div>
-                      <div className="t-amt" style={{color: t.color}}>฿{fmt(Math.max((a.remaining * t.pct) / 100, 0))}</div>
+        {enriched.map(a => (
+          <div key={a.id} className={`asset-row ${selected === a.id ? "selected" : ""}`}
+            onClick={() => setSelected(selected === a.id ? null : a.id)}>
+            <div className="asset-top">
+              <div className="asset-name">{a.name}</div>
+              <button className="btn-del" onClick={e => { e.stopPropagation(); removeAsset(a.id); }}>×</button>
+            </div>
+
+            <div className="asset-fields">
+              <div onClick={e => e.stopPropagation()}>
+                <div className="field-label">เป้าหมาย</div>
+                <NumInput value={a.targetPct} onChange={v => updateAsset(a.id, "targetPct", v)} suffix="%" center />
+              </div>
+              <div onClick={e => e.stopPropagation()}>
+                <div className="field-label">ซื้อแล้ว</div>
+                <NumInput value={a.bought} onChange={v => updateAsset(a.id, "bought", v)} prefix="฿" />
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div className="quota-hint">โควตา ฿{fmt(a.quota)}</div>
+                <div className="remaining-val" style={{
+                  color: a.remaining <= 0 ? "var(--green)" : a.remaining < a.quota * 0.35 ? "var(--warn)" : "var(--danger)"
+                }}>
+                  {a.remaining <= 0 ? "✓ FULL" : `฿${fmt(a.remaining)}`}
+                </div>
+              </div>
+            </div>
+
+            <div className="progress-bar">
+              <div className="progress-fill" style={{
+                width: `${a.progress}%`,
+                background: a.progress >= 100 ? "var(--green)" : a.progress > 50 ? "var(--warn)" : "var(--accent)"
+              }} />
+            </div>
+
+            {/* Tranche breakdown when expanded */}
+            <div className={`tranche-panel ${selected === a.id ? "open" : ""}`} onClick={e => e.stopPropagation()}>
+              <div className="tranche-hint">แผนยิงไม้ · โควตาเหลือ ฿{fmt(Math.max(a.remaining, 0))}</div>
+              <div className="tranche-mini-grid">
+                {tranches.map(t => {
+                  const amt = (Math.max(a.remaining, 0) * t.pct) / 100;
+                  return (
+                    <div key={t.label} className="tranche-mini"
+                      style={{ background: t.color + "14", border: `1px solid ${t.color}44` }}>
+                      <div className="tm-label" style={{ color: t.color }}>{t.label}</div>
+                      <div className="tm-pct">{t.pct}%</div>
+                      <div className="tm-amt" style={{ color: t.color }}>฿{fmt(amt)}</div>
                     </div>
-                  ))}
-                </div>
-              )}
+                  );
+                })}
+              </div>
             </div>
-          ))}
+          </div>
+        ))}
 
-          <div className="card" style={{marginTop: '20px'}}>
-            <div className="card-title">➕ เพิ่มหุ้นใหม่</div>
-            <div style={{display: 'flex', gap: '10px'}}>
-              <input className="input-field-container" style={{padding: '0 15px', width: '60%'}} placeholder="Ticker (e.g. TSLA)" value={newName} onChange={e => setNewName(e.target.value)} />
-              <div style={{width: '40%'}}><NumberInput value={newPct} onChange={setNewPct} suffix="%" textAlign="center" /></div>
+        <div className="card" style={{ marginTop: "20px" }}>
+          <div className="card-title">➕ เพิ่มสินทรัพย์</div>
+          <div className="add-form">
+            <input className="text-input" placeholder="TICKER (เช่น TSLA)"
+              value={newName} onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && addAsset()} />
+            <div className="pct-wrap">
+              <NumInput value={newPct} onChange={setNewPct} suffix="%" center />
             </div>
-            <button className="btn btn-primary" style={{width: '100%', marginTop: '12px'}} onClick={addAsset}>เพิ่มลงพอร์ต</button>
+            <button className="btn-add" onClick={addAsset}>+ เพิ่ม</button>
           </div>
-        </>
-      ) : (
-        <>
-          <div className="card">
-            <div className="card-title">⚙️ ตั้งค่าไม้ DCA</div>
-            <div style={{display: 'flex', gap: '10px'}}>
-              {tranches.map((t, i) => (
-                <div key={i} style={{flex: 1}}>
-                  <label style={{fontSize: '10px', color: t.color, fontWeight: '800', marginBottom: '5px', display: 'block'}}>{t.label}</label>
-                  <NumberInput value={t.pct} onChange={v => {
-                    const next = [...tranches];
-                    next[i].pct = v;
-                    setTranches(next);
-                  }} suffix="%" textAlign="center" />
-                </div>
-              ))}
-            </div>
-          </div>
+        </div>
+      </>}
 
-          <div className="card" style={{background: '#00d4aa05'}}>
-            <div className="card-title">🎯 สรุปยอดซื้อแต่ละไม้ (จากทุนที่เหลือ)</div>
-            <div className="tranche-grid">
-              {tranches.map(t => (
-                <div key={t.label} className="tranche-item" style={{background: '#111318', padding: '18px', borderColor: t.color}}>
-                  <div style={{fontSize: '12px', color: t.color, fontWeight: '800'}}>{t.label} ({t.pct}%)</div>
-                  <div style={{fontSize: '20px', fontWeight: '800', color: t.color, marginTop: '8px'}}>฿{fmt((totalRemaining * t.pct) / 100)}</div>
-                </div>
-              ))}
+      {/* ══ TAB: TRANCHE ══ */}
+      {tab === "tranche" && <>
+        <div className="card">
+          <div className="card-title">⚙️ ตั้งค่าสัดส่วนไม้</div>
+          <div className="tranche-settings">
+            {tranches.map((t, i) => (
+              <div key={i} className="t-field">
+                <div className="t-field-label" style={{ color: t.color }}>{t.label}</div>
+                <NumInput value={t.pct} onChange={v => updateTranche(i, v)} suffix="%" center />
+              </div>
+            ))}
+            <div className="tranche-total-badge" style={{
+              background: Math.abs(trancheTotal - 100) < 0.01 ? "#22c55e18" : "#ef444418",
+              border: `1px solid ${Math.abs(trancheTotal - 100) < 0.01 ? "#22c55e44" : "#ef444444"}`,
+              color: Math.abs(trancheTotal - 100) < 0.01 ? "var(--green)" : "var(--danger)",
+            }}>
+              {trancheTotal}% {Math.abs(trancheTotal - 100) < 0.01 ? "✓" : trancheTotal > 100 ? `↑${trancheTotal - 100}%` : `↓${100 - trancheTotal}%`}
             </div>
-            <div style={{textAlign: 'center', fontSize: '10px', color: '#5a6070', marginTop: '15px'}}>คำนวณจากกระสุนที่เหลือ ฿{fmt(totalRemaining)}</div>
           </div>
-        </>
-      )}
+          {Math.abs(trancheTotal - 100) > 0.01 && (
+            <div className="tranche-warn">⚠️ รวมไม้ควรได้ 100% เพื่อใช้กระสุนให้ครบ</div>
+          )}
+        </div>
+
+        <div className="card">
+          <div className="card-title">🎯 สรุปยอดแต่ละไม้</div>
+          <div style={{ fontSize: "11px", color: "var(--muted)", marginBottom: "14px", fontWeight: 500 }}>
+            คำนวณจาก <span style={{ color: "var(--accent)", fontWeight: 700 }}>กระสุนที่เหลือรวม</span> ฿{fmt(totalRemaining)}
+          </div>
+          <div className="tranche-summary-grid">
+            {tranches.map(t => (
+              <div key={t.label} className="tranche-big-card"
+                style={{ background: t.color + "12", border: `1px solid ${t.color}44` }}>
+                <div className="tb-label" style={{ color: t.color }}>{t.label}</div>
+                <div className="tb-pct">{t.pct}% ของที่เหลือ</div>
+                <div className="tb-amount" style={{ color: t.color }}>฿{fmt((totalRemaining * t.pct) / 100)}</div>
+                <div className="tb-sub">รวมทุกตัว</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-title">📋 แยกตามสินทรัพย์</div>
+          {enriched.filter(a => a.remaining > 0).length === 0
+            ? <div className="empty-state">✓ ทุกสินทรัพย์ DCA เต็มโควตาแล้ว!</div>
+            : enriched.filter(a => a.remaining > 0).map(a => (
+              <div key={a.id} className="per-asset-row">
+                <div className="par-top">
+                  <div className="par-name">{a.name}</div>
+                  <div className="par-quota">เหลือ ฿{fmt(a.remaining)}</div>
+                </div>
+                <div className="par-grid">
+                  {tranches.map(t => {
+                    const amt = (a.remaining * t.pct) / 100;
+                    return (
+                      <div key={t.label} className="par-t"
+                        style={{ background: t.color + "14", border: `1px solid ${t.color}33` }}>
+                        <div className="pt-label" style={{ color: t.color }}>{t.label}</div>
+                        <div className="pt-amt" style={{ color: t.color }}>฿{fmt(amt)}</div>
+                        <div className="pt-pct" style={{ color: t.color + "99" }}>{t.pct}%</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))
+          }
+        </div>
+      </>}
     </div>
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+ReactDOM.createRoot(document.getElementById('app')).render(<App />);
 </script>
 </body>
 </html>
