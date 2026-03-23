@@ -17,7 +17,7 @@
 <script type="text/babel">
 const { useState, useEffect, useMemo } = React;
 
-// 🚀 Default Data (จะใช้เฉพาะครั้งแรกที่เปิดแอป)
+// ─── Default Config ─────────────────────────────────────────────────────────
 const DEFAULT_ASSETS = [
   { id: 1, name: "AAPL", targetPct: 5, bought: 0 },
   { id: 2, name: "META", targetPct: 10, bought: 0 },
@@ -39,23 +39,25 @@ const DEFAULT_TRANCHES = [
 const fmt = (n) => n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const pctFmt = (n) => `${n.toFixed(2)}%`;
 
-function NumberInput({ value, onChange, prefix, suffix, className = "" }) {
+// ─── NumberInput (ปรับปรุงใหม่: เอาปุ่มออกและขยายช่อง) ──────────────────────────
+function NumberInput({ value, onChange, prefix, suffix, textAlign = "left" }) {
   return (
-    <div className={`num-input-wrap ${className}`}>
-      {prefix && <span className="num-prefix">{prefix}</span>}
+    <div className="input-field-container">
+      {prefix && <span className="input-affix">{prefix}</span>}
       <input
         type="number"
-        value={value}
+        value={value === 0 ? "" : value}
+        placeholder="0"
         onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-        min={0}
+        style={{ textAlign }}
       />
-      {suffix && <span className="num-suffix">{suffix}</span>}
+      {suffix && <span className="input-affix">{suffix}</span>}
     </div>
   );
 }
 
 function App() {
-  // 💾 1. Initialize State จาก LocalStorage
+  // 💾 State Management
   const [initial, setInitial] = useState(() => Number(localStorage.getItem("dca_initial")) || 70000);
   const [added, setAdded] = useState(() => Number(localStorage.getItem("dca_added")) || 0);
   const [assets, setAssets] = useState(() => {
@@ -72,7 +74,6 @@ function App() {
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [activeTab, setActiveTab] = useState("tracker");
 
-  // 💾 2. Save ข้อมูลทุกครั้งที่เปลี่ยน
   useEffect(() => {
     localStorage.setItem("dca_initial", initial);
     localStorage.setItem("dca_added", added);
@@ -83,7 +84,6 @@ function App() {
   // Calculations
   const totalCapital = initial + added;
   const totalAllocated = assets.reduce((s, a) => s + a.targetPct, 0);
-
   const enriched = useMemo(() =>
     assets.map((a) => {
       const quota = (totalCapital * a.targetPct) / 100;
@@ -92,211 +92,212 @@ function App() {
       return { ...a, quota, remaining, progress };
     }), [assets, totalCapital]
   );
-
   const totalBought = enriched.reduce((s, a) => s + a.bought, 0);
-  const totalRemaining = enriched.reduce((s, a) => s + Math.max(a.remaining, 0), 0);
-  const trancheTotal = tranches.reduce((s, t) => s + t.pct, 0);
+  const totalRemaining = totalCapital - totalBought;
 
   // Handlers
-  function updateAsset(id, field, value) {
-    setAssets(prev => prev.map(a => a.id === id ? { ...a, [field]: value } : a));
-  }
-
-  function addAsset() {
+  const updateAsset = (id, field, value) => setAssets(prev => prev.map(a => a.id === id ? { ...a, [field]: value } : a));
+  const addAsset = () => {
     if (!newName.trim()) return;
     setAssets(prev => [...prev, { id: Date.now(), name: newName.toUpperCase(), targetPct: newPct, bought: 0 }]);
-    setNewName("");
-    setNewPct(5);
-  }
-
-  function removeAsset(id) {
-    if (confirm("ลบสินทรัพย์นี้?")) {
-      setAssets(prev => prev.filter(a => a.id !== id));
-      if (selectedAsset === id) setSelectedAsset(null);
-    }
-  }
-
-  function updateTranche(i, val) {
-    setTranches(prev => prev.map((t, idx) => idx === i ? { ...t, pct: Math.max(0, val) } : t));
-  }
+    setNewName(""); setNewPct(5);
+  };
+  const removeAsset = (id) => { if (confirm("ลบสินทรัพย์นี้?")) setAssets(prev => prev.filter(a => a.id !== id)); };
 
   return (
-    <div className="app">
+    <div className="container">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        :root {
-          --bg: #0a0c0f; --surface: #111318; --surface2: #181c23;
-          --border: #1f2430; --border2: #2a3040; --text: #e8eaf0;
-          --muted: #5a6070; --accent: #00d4aa; --accent2: #0088ff;
-          --warn: #f59e0b; --danger: #ef4444; --green: #22c55e;
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #0a0c0f; color: #e8eaf0; font-family: 'Plus Jakarta Sans', sans-serif; }
+        
+        /* ซ่อนปุ่มเพิ่มลดของช่อง Number */
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button {
+          -webkit-appearance: none; margin: 0;
         }
-        body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; min-height: 100vh; }
-        .app { max-width: 760px; margin: 0 auto; padding: 24px 16px 80px; }
-        .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px; }
-        .header-left h1 { font-family: 'Outfit', sans-serif; font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
-        .header-left .sub { font-size: 11px; color: var(--muted); margin-top: 3px; letter-spacing: 1.5px; text-transform: uppercase; }
-        .badge { background: linear-gradient(135deg, #00d4aa22, #0088ff22); border: 1px solid #00d4aa44; color: var(--accent); font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 20px; text-transform: uppercase; }
-        .tabs { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 4px; margin-bottom: 24px; }
-        .tab { flex: 1; padding: 12px; border-radius: 9px; border: none; background: transparent; color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .tab.active { background: var(--surface2); color: var(--accent); border: 1px solid var(--border2); }
-        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
-        .card-title { font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-        .card-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-        .pool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .pool-item label { display: block; font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
-        .pool-total { grid-column: 1/-1; background: linear-gradient(135deg, #00d4aa12, #0088ff08); border: 1px solid #00d4aa33; border-radius: 10px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; }
-        .pool-total-value { font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; color: var(--accent); }
-        .num-input-wrap { display: flex; align-items: center; background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; overflow: hidden; }
-        .num-input-wrap input { flex: 1; background: transparent; border: none; outline: none; color: var(--text); font-size: 14px; padding: 10px 8px; width: 100%; }
-        .num-prefix, .num-suffix { padding: 0 10px; font-size: 12px; color: var(--muted); }
-        .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
-        .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
-        .stat-box .s-label { font-size: 9px; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
-        .stat-box .s-val { font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; }
-        .alloc-bar-wrap { margin-bottom: 16px; }
-        .alloc-track { height: 4px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
-        .alloc-fill { height: 100%; transition: width 0.4s; }
-        .asset-list { display: flex; flex-direction: column; gap: 8px; }
-        .asset-row { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer; }
-        .asset-row.selected { border-color: var(--accent); background: #00d4aa08; }
-        .asset-row-top { display: grid; grid-template-columns: 80px 70px 1fr 1fr 1fr 32px; align-items: center; gap: 8px; }
-        .asset-name { font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; }
-        .prog-wrap { margin-top: 8px; height: 3px; background: var(--surface); border-radius: 3px; overflow: hidden; }
-        .prog-fill { height: 100%; transition: width 0.5s; }
-        .tranche-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
-        .tranche-item { background: var(--surface); border-radius: 8px; padding: 10px; text-align: center; border: 1px solid var(--border); }
-        .tranche-item .t-amt { font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; }
-        .btn { padding: 10px 16px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; font-size: 12px; }
-        .btn-accent { background: var(--accent); color: #000; }
-        .btn-del { background: transparent; color: var(--muted); border: none; cursor: pointer; font-size: 18px; }
-        .btn-del:hover { color: var(--danger); }
-        .add-form { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
-        .text-input { background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; color: var(--text); padding: 10px 12px; outline: none; width: 100px; text-transform: uppercase; }
-        .tranche-big-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-        .tranche-big-card { border-radius: 12px; padding: 16px; text-align: center; }
-        .tranche-panel { display: none; padding-top: 10px; }
-        .tranche-panel.open { display: block; }
-        @media (max-width: 600px) {
-          .asset-row-top { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: auto auto; gap: 12px; }
-          .asset-name { grid-column: 1 / 2; }
-          .btn-del { grid-column: 3 / 4; justify-self: end; }
-        }
+
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; padding-bottom: 100px; }
+        
+        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; }
+        .header h1 { font-family: 'Outfit', sans-serif; font-size: 28px; font-weight: 800; }
+        .header .sub { font-size: 11px; color: #5a6070; text-transform: uppercase; letter-spacing: 1.5px; }
+        .pro-badge { background: #00d4aa15; border: 1px solid #00d4aa40; color: #00d4aa; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
+
+        .tabs { display: flex; background: #111318; padding: 4px; border-radius: 12px; margin-bottom: 24px; border: 1px solid #1f2430; }
+        .tab { flex: 1; padding: 12px; border-radius: 10px; border: none; background: transparent; color: #5a6070; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .tab.active { background: #181c23; color: #00d4aa; border: 1px solid #2a3040; }
+
+        .card { background: #111318; border: 1px solid #1f2430; border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+        .card-title { font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 700; color: #5a6070; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        .card-title::after { content: ''; flex: 1; height: 1px; background: #1f2430; }
+
+        /* การตั้งค่า Input ช่องกรอก */
+        .input-field-container { display: flex; align-items: center; background: #181c23; border: 1px solid #2a3040; border-radius: 10px; overflow: hidden; height: 44px; width: 100%; }
+        .input-field-container:focus-within { border-color: #00d4aa; }
+        .input-field-container input { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-size: 16px; font-weight: 600; padding: 0 12px; width: 100%; }
+        .input-affix { color: #5a6070; font-size: 13px; font-weight: 600; padding: 0 12px; background: #111318; height: 100%; display: flex; align-items: center; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+        .stat-box { background: #111318; border: 1px solid #1f2430; padding: 15px; border-radius: 14px; }
+        .stat-label { font-size: 9px; color: #5a6070; text-transform: uppercase; margin-bottom: 6px; }
+        .stat-value { font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; }
+
+        .asset-row { background: #181c23; border: 1px solid #1f2430; border-radius: 14px; padding: 16px; margin-bottom: 10px; cursor: pointer; transition: 0.2s; }
+        .asset-row:hover { border-color: #2a3040; }
+        .asset-row.selected { border-color: #00d4aa; background: #00d4aa08; }
+        .asset-grid { display: grid; grid-template-columns: 80px 80px 1fr; gap: 12px; align-items: end; }
+        .asset-name { font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+        
+        .progress-bar { height: 4px; background: #111318; border-radius: 4px; margin-top: 12px; overflow: hidden; }
+        .progress-fill { height: 100%; transition: width 0.5s; }
+
+        .btn { padding: 12px; border-radius: 10px; border: none; font-weight: 700; cursor: pointer; font-size: 13px; transition: 0.2s; }
+        .btn-primary { background: #00d4aa; color: #000; }
+        .btn-del { color: #5a6070; background: transparent; font-size: 20px; }
+        .btn-del:hover { color: #ef4444; }
+
+        .tranche-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 15px; }
+        .tranche-item { background: #111318; border: 1px solid #1f2430; border-radius: 10px; padding: 12px; text-align: center; }
+        .tranche-item .t-amt { font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; margin-top: 4px; }
       `}</style>
 
       <div className="header">
-        <div className="header-left">
-          <h1>DCA Tracker</h1>
-          <div className="sub">กระสุน · โควตา · ไม้</div>
+        <div>
+          <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+            <h1>DCA Tracker</h1>
+            <span className="pro-badge">PRO</span>
+          </div>
+          <div className="sub">Dollar Cost Averaging Portfolio</div>
         </div>
-        <div className="badge">Auto-Saving ✓</div>
+        <div style={{color: '#00d4aa', fontSize: '10px', fontWeight: '800'}}>AUTO-SAVING ✓</div>
       </div>
 
       <div className="tabs">
         <button className={`tab ${activeTab === "tracker" ? "active" : ""}`} onClick={() => setActiveTab("tracker")}>📊 Quota Tracker</button>
-        <button className={`tab ${activeTab === "tranche" ? "active" : ""}`} onClick={() => setActiveTab("tranche")}>🎯 คำนวนไม้ DCA</button>
+        <button className={`tab ${activeTab === "tranche" ? "active" : ""}`} onClick={() => setActiveTab("tranche")}>🎯 คำนวณไม้ DCA</button>
       </div>
 
+      {/* 💳 Master Cash Pool */}
       <div className="card">
         <div className="card-title">💰 Master Cash Pool</div>
-        <div className="pool-grid">
-          <div className="pool-item">
-            <label>เงินทุนตั้งต้น</label>
+        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
+          <div>
+            <div style={{fontSize: '10px', color: '#5a6070', marginBottom: '6px', textTransform: 'uppercase'}}>ทุนตั้งต้น</div>
             <NumberInput value={initial} onChange={setInitial} prefix="฿" />
           </div>
-          <div className="pool-item">
-            <label>เงินที่เติมเพิ่ม</label>
+          <div>
+            <div style={{fontSize: '10px', color: '#5a6070', marginBottom: '6px', textTransform: 'uppercase'}}>เงินที่เติมเพิ่ม</div>
             <NumberInput value={added} onChange={setAdded} prefix="฿" />
           </div>
-          <div className="pool-total">
-            <div style={{fontSize: "11px", color: "var(--accent)"}}>รวมทุนทั้งหมด</div>
-            <div className="pool-total-value">฿{fmt(totalCapital)}</div>
-          </div>
+        </div>
+        <div style={{marginTop: '15px', padding: '15px', background: '#00d4aa10', borderRadius: '12px', border: '1px solid #00d4aa30', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+          <div style={{fontSize: '12px', color: '#00d4aa', fontWeight: '700'}}>เงินทุนรวมทั้งหมด</div>
+          <div style={{fontSize: '22px', fontWeight: '800', color: '#00d4aa'}}>฿{fmt(totalCapital)}</div>
         </div>
       </div>
 
       {activeTab === "tracker" ? (
         <>
-          <div className="stats-row">
+          <div className="stats-grid">
             <div className="stat-box">
-              <div className="s-label">ซื้อไปแล้ว</div>
-              <div className="s-val" style={{color: "var(--warn)"}}>฿{fmt(totalBought)}</div>
+              <div className="stat-label">ซื้อไปแล้ว</div>
+              <div className="stat-value" style={{color: '#f59e0b'}}>฿{fmt(totalBought)}</div>
             </div>
             <div className="stat-box">
-              <div className="s-label">กระสุนเหลือ</div>
-              <div className="s-val" style={{color: "var(--accent)"}}>฿{fmt(totalRemaining)}</div>
+              <div className="stat-label">กระสุนเหลือ</div>
+              <div className="stat-value" style={{color: '#00d4aa'}}>฿{fmt(totalRemaining)}</div>
             </div>
             <div className="stat-box">
-              <div className="s-label">Alloc รวม</div>
-              <div className="s-val" style={{color: totalAllocated > 100 ? "var(--danger)" : "var(--green)"}}>{pctFmt(totalAllocated)}</div>
+              <div className="stat-label">ALLOC รวม</div>
+              <div className="stat-value" style={{color: totalAllocated === 100 ? '#22c55e' : '#ef4444'}}>{pctFmt(totalAllocated)}</div>
             </div>
           </div>
 
-          <div className="alloc-bar-wrap">
-            <div className="alloc-track">
-              <div className="alloc-fill" style={{ width: `${Math.min(totalAllocated, 100)}%`, background: totalAllocated > 100 ? "var(--danger)" : "var(--green)" }} />
-            </div>
+          <div style={{marginBottom: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#5a6070', padding: '0 5px'}}>
+            <span>สินทรัพย์ / เป้าหมาย %</span>
+            <span>ยอดซื้อแล้ว / โควตาคงเหลือ</span>
           </div>
 
-          <div className="asset-list">
-            {enriched.map(a => (
-              <div key={a.id} className={`asset-row ${selectedAsset === a.id ? "selected" : ""}`} onClick={() => setSelectedAsset(selectedAsset === a.id ? null : a.id)}>
-                <div className="asset-row-top">
-                  <div className="asset-name">{a.name}</div>
-                  <div onClick={e => e.stopPropagation()}><NumberInput value={a.targetPct} onChange={v => updateAsset(a.id, "targetPct", v)} suffix="%" /></div>
-                  <div style={{textAlign: "right"}}><div style={{fontSize: "9px", color: "var(--muted)"}}>โควตา</div><div style={{fontSize: "12px", color: "var(--accent)"}}>฿{fmt(a.quota)}</div></div>
-                  <div onClick={e => e.stopPropagation()}><NumberInput value={a.bought} onChange={v => updateAsset(a.id, "bought", v)} prefix="฿" /></div>
-                  <div style={{textAlign: "right"}}><div style={{fontSize: "9px", color: "var(--muted)"}}>คงเหลือ</div><div style={{fontSize: "12px", color: a.remaining <= 0 ? "var(--green)" : "var(--danger)"}}>{a.remaining <= 0 ? "เต็ม" : fmt(a.remaining)}</div></div>
-                  <button className="btn-del" onClick={e => { e.stopPropagation(); removeAsset(a.id); }}>×</button>
+          {enriched.map(a => (
+            <div key={a.id} className={`asset-row ${selectedAsset === a.id ? "selected" : ""}`} onClick={() => setSelectedAsset(selectedAsset === a.id ? null : a.id)}>
+              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+                <div className="asset-name">{a.name}</div>
+                <button className="btn-del" onClick={e => { e.stopPropagation(); removeAsset(a.id); }}>×</button>
+              </div>
+              
+              <div className="asset-grid">
+                <div onClick={e => e.stopPropagation()}>
+                   <div style={{fontSize: '9px', color: '#5a6070', marginBottom: '4px'}}>เป้าหมาย</div>
+                   <NumberInput value={a.targetPct} onChange={v => updateAsset(a.id, "targetPct", v)} suffix="%" textAlign="center" />
                 </div>
-                <div className="prog-wrap"><div className="prog-fill" style={{ width: `${a.progress}%`, background: a.progress >= 100 ? "var(--green)" : "var(--accent)" }} /></div>
-                
-                <div className={`tranche-panel ${selectedAsset === a.id ? "open" : ""}`}>
-                  <div className="tranche-grid">
-                    {tranches.map(t => (
-                      <div key={t.label} className="tranche-item" style={{borderColor: t.color + "44"}}>
-                        <div style={{fontSize: "10px", color: t.color, fontWeight: 700}}>{t.label}</div>
-                        <div className="t-amt" style={{color: t.color}}>฿{fmt(Math.max((a.remaining * t.pct) / 100, 0))}</div>
-                      </div>
-                    ))}
-                  </div>
+                <div onClick={e => e.stopPropagation()}>
+                   <div style={{fontSize: '9px', color: '#5a6070', marginBottom: '4px'}}>ซื้อแล้ว</div>
+                   <NumberInput value={a.bought} onChange={v => updateAsset(a.id, "bought", v)} prefix="฿" textAlign="center" />
+                </div>
+                <div style={{textAlign: 'right'}}>
+                   <div style={{fontSize: '9px', color: '#5a6070', marginBottom: '4px'}}>โควตา ฿{fmt(a.quota)}</div>
+                   <div style={{fontSize: '15px', fontWeight: '800', color: a.remaining <= 0 ? '#22c55e' : '#ef4444'}}>
+                     {a.remaining <= 0 ? "✓ FULL" : `฿${fmt(a.remaining)}`}
+                   </div>
                 </div>
               </div>
-            ))}
-          </div>
 
-          <div className="card" style={{marginTop: "16px"}}>
-            <div className="card-title">➕ เพิ่มสินทรัพย์</div>
-            <div className="add-form">
-              <input className="text-input" placeholder="TICKER" value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === "Enter" && addAsset()} />
-              <NumberInput value={newPct} onChange={setNewPct} suffix="%" />
-              <button className="btn btn-accent" onClick={addAsset}>+ เพิ่มหุ้น</button>
+              <div className="progress-bar">
+                <div className="progress-fill" style={{ width: `${a.progress}%`, background: a.progress >= 100 ? '#22c55e' : '#00d4aa' }} />
+              </div>
+
+              {selectedAsset === a.id && (
+                <div className="tranche-grid" onClick={e => e.stopPropagation()}>
+                  {tranches.map(t => (
+                    <div key={t.label} className="tranche-item" style={{borderColor: t.color + '40'}}>
+                      <div style={{fontSize: '10px', color: t.color, fontWeight: '700'}}>{t.label}</div>
+                      <div className="t-amt" style={{color: t.color}}>฿{fmt(Math.max((a.remaining * t.pct) / 100, 0))}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+          ))}
+
+          <div className="card" style={{marginTop: '20px'}}>
+            <div className="card-title">➕ เพิ่มหุ้นใหม่</div>
+            <div style={{display: 'flex', gap: '10px'}}>
+              <input className="input-field-container" style={{padding: '0 15px', width: '60%'}} placeholder="Ticker (e.g. TSLA)" value={newName} onChange={e => setNewName(e.target.value)} />
+              <div style={{width: '40%'}}><NumberInput value={newPct} onChange={setNewPct} suffix="%" textAlign="center" /></div>
+            </div>
+            <button className="btn btn-primary" style={{width: '100%', marginTop: '12px'}} onClick={addAsset}>เพิ่มลงพอร์ต</button>
           </div>
         </>
       ) : (
         <>
           <div className="card">
             <div className="card-title">⚙️ ตั้งค่าไม้ DCA</div>
-            <div style={{display: "flex", gap: "10px"}}>
+            <div style={{display: 'flex', gap: '10px'}}>
               {tranches.map((t, i) => (
                 <div key={i} style={{flex: 1}}>
-                  <label style={{fontSize: "10px", color: t.color, fontWeight: 700}}>{t.label}</label>
-                  <NumberInput value={t.pct} onChange={v => updateTranche(i, v)} suffix="%" />
+                  <label style={{fontSize: '10px', color: t.color, fontWeight: '800', marginBottom: '5px', display: 'block'}}>{t.label}</label>
+                  <NumberInput value={t.pct} onChange={v => {
+                    const next = [...tranches];
+                    next[i].pct = v;
+                    setTranches(next);
+                  }} suffix="%" textAlign="center" />
                 </div>
               ))}
             </div>
           </div>
-          <div className="card">
-            <div className="card-title">🎯 สรุปยอดซื้อตามไม้ (รวมโควตาที่เหลือ)</div>
-            <div className="tranche-big-grid">
+
+          <div className="card" style={{background: '#00d4aa05'}}>
+            <div className="card-title">🎯 สรุปยอดซื้อแต่ละไม้ (จากทุนที่เหลือ)</div>
+            <div className="tranche-grid">
               {tranches.map(t => (
-                <div key={t.label} className="tranche-big-card" style={{background: t.color + "12", border: `1px solid ${t.color}44`}}>
-                  <div style={{fontSize: "12px", color: t.color, fontWeight: 700, marginBottom: "4px"}}>{t.label} ({t.pct}%)</div>
-                  <div style={{fontSize: "18px", fontWeight: 800, color: t.color}}>฿{fmt((totalRemaining * t.pct) / 100)}</div>
+                <div key={t.label} className="tranche-item" style={{background: '#111318', padding: '18px', borderColor: t.color}}>
+                  <div style={{fontSize: '12px', color: t.color, fontWeight: '800'}}>{t.label} ({t.pct}%)</div>
+                  <div style={{fontSize: '20px', fontWeight: '800', color: t.color, marginTop: '8px'}}>฿{fmt((totalRemaining * t.pct) / 100)}</div>
                 </div>
               ))}
             </div>
+            <div style={{textAlign: 'center', fontSize: '10px', color: '#5a6070', marginTop: '15px'}}>คำนวณจากกระสุนที่เหลือ ฿{fmt(totalRemaining)}</div>
           </div>
         </>
       )}
