@@ -340,7 +340,9 @@
     .tranche-mini .tm-amt { font-family: var(--font-display); font-size: 14px; font-weight: 700; }
 
     /* ── Add Asset ── */
-    .add-form { display: flex; gap: 10px; align-items: flex-end; }
+    .add-form { display: flex; flex-direction: column; gap: 10px; }
+    .add-form-row1 { display: flex; gap: 10px; }
+    .add-form-row2 { display: flex; gap: 10px; }
     .add-form .text-input {
       flex: 1;
       background: var(--surface2);
@@ -355,10 +357,12 @@
       outline: none;
       text-transform: uppercase;
       transition: border-color 0.2s;
+      width: 100%;
     }
     .add-form .text-input:focus { border-color: var(--accent); }
-    .add-form .pct-wrap { width: 100px; }
+    .add-form .pct-wrap { width: 110px; flex-shrink: 0; }
     .btn-add {
+      flex: 1;
       height: 44px;
       padding: 0 18px;
       background: var(--accent);
@@ -366,7 +370,7 @@
       border: none;
       border-radius: 10px;
       font-family: var(--font-body);
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 700;
       cursor: pointer;
       white-space: nowrap;
@@ -682,10 +686,12 @@ function App() {
             <input className="text-input" placeholder="TICKER (เช่น TSLA)"
               value={newName} onChange={e => setNewName(e.target.value)}
               onKeyDown={e => e.key === "Enter" && addAsset()} />
-            <div className="pct-wrap">
-              <NumInput value={newPct} onChange={setNewPct} suffix="%" center />
+            <div className="add-form-row2">
+              <div className="pct-wrap">
+                <NumInput value={newPct} onChange={setNewPct} suffix="%" center />
+              </div>
+              <button className="btn-add" onClick={addAsset}>+ เพิ่ม</button>
             </div>
-            <button className="btn-add" onClick={addAsset}>+ เพิ่ม</button>
           </div>
         </div>
       </>}
