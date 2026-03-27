@@ -1,364 +1,672 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Stock Average</title>
-    
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="AvgCalc">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock DCA Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --surface: #111418;
+    --surface2: #181c22;
+    --border: #232830;
+    --border2: #2e3540;
+    --green: #00e5a0;
+    --green-dim: rgba(0,229,160,0.12);
+    --green-glow: rgba(0,229,160,0.25);
+    --red: #ff4f6a;
+    --red-dim: rgba(255,79,106,0.12);
+    --yellow: #ffc542;
+    --text: #e8edf5;
+    --text2: #8a95a3;
+    --text3: #4a5568;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        ::-webkit-scrollbar { width: 0px; background: transparent; }
-        .fade-in { animation: fadeIn 0.3s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        input[type=number]::-webkit-inner-spin-button, 
-        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-    </style>
+  /* ── GRID NOISE BACKGROUND ─────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,160,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,160,0.015) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ── APP SHELL ──────────────────────────────────────── */
+  #app { max-width: 440px; margin: 0 auto; padding: 0 0 100px; position: relative; z-index: 1; }
+
+  /* ── HEADER ─────────────────────────────────────────── */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; background: var(--bg); z-index: 10;
+  }
+  .header-title { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+  .header-title span { color: var(--green); }
+  .header-sub { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-top: 2px; }
+  .btn-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: var(--green-dim); border: 1px solid var(--green);
+    color: var(--green); font-size: 22px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; font-weight: 300;
+  }
+  .btn-icon:hover { background: var(--green-glow); transform: scale(1.05); }
+
+  /* ── PORTFOLIO SUMMARY ──────────────────────────────── */
+  .summary {
+    margin: 16px; padding: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    position: relative; overflow: hidden;
+  }
+  .summary::before {
+    content: ''; position: absolute; top: -30px; right: -30px;
+    width: 120px; height: 120px; border-radius: 50%;
+    background: radial-gradient(circle, var(--green-dim), transparent 70%);
+  }
+  .summary-label { font-size: 10px; color: var(--text3); letter-spacing: 1.5px; font-family: var(--mono); text-transform: uppercase; }
+  .summary-val { font-size: 28px; font-weight: 800; margin-top: 4px; font-family: var(--mono); color: var(--green); }
+  .summary-row { display: flex; gap: 24px; margin-top: 16px; }
+  .summary-item { flex: 1; }
+  .summary-item .s-label { font-size: 10px; color: var(--text3); font-family: var(--mono); letter-spacing: 1px; }
+  .summary-item .s-val { font-size: 14px; font-weight: 600; font-family: var(--mono); color: var(--text2); margin-top: 2px; }
+
+  /* ── STOCK LIST ──────────────────────────────────────── */
+  .section-title {
+    font-size: 11px; color: var(--text3); letter-spacing: 2px;
+    font-family: var(--mono); text-transform: uppercase;
+    padding: 8px 20px 12px;
+  }
+  .stock-list { display: flex; flex-direction: column; gap: 8px; padding: 0 16px; }
+  .stock-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.18s;
+    display: flex; align-items: center; gap: 14px;
+    position: relative; overflow: hidden;
+  }
+  .stock-card::after {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px; border-radius: 0 2px 2px 0;
+    background: var(--green); transform: scaleY(0);
+    transition: transform 0.18s; transform-origin: center;
+  }
+  .stock-card:hover { border-color: var(--border2); background: var(--surface2); transform: translateX(3px); }
+  .stock-card:hover::after { transform: scaleY(1); }
+
+  .ticker-badge {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: var(--green-dim); border: 1px solid rgba(0,229,160,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; font-family: var(--mono); color: var(--green);
+    letter-spacing: 0.5px; text-align: center; flex-shrink: 0;
+  }
+  .stock-info { flex: 1; }
+  .stock-name { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+  .stock-meta { font-size: 11px; color: var(--text3); font-family: var(--mono); display: flex; gap: 8px; }
+  .stock-right { text-align: right; }
+  .stock-avg { font-size: 15px; font-weight: 600; font-family: var(--mono); }
+  .stock-shares { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-top: 2px; }
+  .stock-arrow { color: var(--text3); font-size: 14px; margin-left: 4px; transition: transform 0.18s; }
+  .stock-card:hover .stock-arrow { transform: translateX(3px); color: var(--green); }
+
+  /* ── EMPTY STATE ────────────────────────────────────── */
+  .empty {
+    text-align: center; padding: 48px 20px;
+    color: var(--text3); font-family: var(--mono); font-size: 13px;
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.4; }
+
+  /* ── MODAL / DETAIL VIEW ────────────────────────────── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(5,7,10,0.92);
+    z-index: 100; display: none; align-items: flex-end;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    width: 100%; max-width: 440px; margin: 0 auto;
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-bottom: none;
+    border-radius: 24px 24px 0 0;
+    max-height: 90vh; overflow-y: auto;
+    animation: slideUp 0.28s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes slideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .modal-handle {
+    width: 40px; height: 4px; border-radius: 2px;
+    background: var(--border2); margin: 14px auto 0;
+  }
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px 0;
+  }
+  .modal-ticker { font-size: 24px; font-weight: 800; }
+  .modal-ticker span { color: var(--green); }
+  .modal-close {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text2); cursor: pointer; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .modal-close:hover { background: var(--red-dim); color: var(--red); border-color: var(--red); }
+
+  /* ── CURRENT POSITION CARD ──────────────────────────── */
+  .position-card {
+    margin: 16px; padding: 18px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px;
+  }
+  .pos-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .pos-item {}
+  .pos-label { font-size: 10px; color: var(--text3); font-family: var(--mono); letter-spacing: 1px; text-transform: uppercase; }
+  .pos-val { font-size: 20px; font-weight: 700; font-family: var(--mono); margin-top: 3px; }
+  .pos-val.green { color: var(--green); }
+  .pos-val.small { font-size: 14px; color: var(--text2); }
+  .divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+  /* ── DCA RESULT BANNER ──────────────────────────────── */
+  .dca-result {
+    margin: 0 16px 16px;
+    padding: 16px 20px;
+    background: var(--green-dim);
+    border: 1px solid var(--green);
+    border-radius: 14px;
+    display: none;
+    animation: fadeIn 0.2s ease;
+  }
+  .dca-result.show { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  .dca-result-label { font-size: 10px; color: var(--green); font-family: var(--mono); letter-spacing: 1.5px; text-transform: uppercase; }
+  .dca-result-val { font-size: 32px; font-weight: 800; font-family: var(--mono); color: var(--green); margin-top: 4px; }
+  .dca-result-detail { font-size: 11px; font-family: var(--mono); color: var(--text2); margin-top: 8px; display: flex; gap: 16px; flex-wrap: wrap; }
+
+  /* ── DCA ROWS ───────────────────────────────────────── */
+  .dca-section { padding: 0 16px; }
+  .dca-section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .dca-section-title { font-size: 11px; color: var(--text3); font-family: var(--mono); letter-spacing: 1.5px; text-transform: uppercase; }
+  .btn-add-row {
+    display: flex; align-items: center; gap: 5px;
+    padding: 6px 12px; border-radius: 8px;
+    background: var(--green-dim); border: 1px solid rgba(0,229,160,0.3);
+    color: var(--green); font-size: 12px; font-family: var(--mono);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .btn-add-row:hover { background: var(--green-glow); border-color: var(--green); }
+
+  .dca-rows { display: flex; flex-direction: column; gap: 8px; }
+  .dca-row {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .dca-row-num {
+    width: 22px; height: 22px; border-radius: 6px;
+    background: var(--surface2); border: 1px solid var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-family: var(--mono); color: var(--text3);
+    flex-shrink: 0;
+  }
+  .input-group { flex: 1; }
+  .input-label { font-size: 9px; color: var(--text3); font-family: var(--mono); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+  .input-field {
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 8px 10px;
+    color: var(--text); font-family: var(--mono); font-size: 14px; font-weight: 500;
+    outline: none; width: 100%; transition: border-color 0.15s;
+  }
+  .input-field:focus { border-color: var(--green); }
+  .input-field::placeholder { color: var(--text3); }
+
+  .mode-tabs {
+    display: flex; gap: 4px; margin-bottom: 10px;
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 3px;
+  }
+  .mode-tab {
+    flex: 1; padding: 5px; text-align: center; border-radius: 6px;
+    font-size: 11px; font-family: var(--mono); color: var(--text3);
+    cursor: pointer; transition: all 0.15s; border: none; background: none;
+  }
+  .mode-tab.active { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,229,160,0.3); }
+
+  .dca-row-qty {
+    font-size: 12px; font-family: var(--mono); color: var(--text3);
+    min-width: 60px; text-align: right;
+  }
+  .btn-del-row {
+    width: 28px; height: 28px; border-radius: 7px;
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text3); font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; flex-shrink: 0;
+  }
+  .btn-del-row:hover { background: var(--red-dim); color: var(--red); border-color: var(--red); }
+
+  /* ── ADD STOCK MODAL ────────────────────────────────── */
+  .add-modal-overlay {
+    position: fixed; inset: 0; background: rgba(5,7,10,0.92);
+    z-index: 200; display: none; align-items: center; justify-content: center;
+    padding: 20px;
+    backdrop-filter: blur(4px);
+  }
+  .add-modal-overlay.open { display: flex; }
+  .add-modal {
+    width: 100%; max-width: 380px;
+    background: var(--bg); border: 1px solid var(--border2);
+    border-radius: 20px; padding: 24px;
+    animation: fadeScaleIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes fadeScaleIn {
+    from { opacity: 0; transform: scale(0.92); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .add-modal-title { font-size: 18px; font-weight: 800; margin-bottom: 20px; }
+  .add-modal-title span { color: var(--green); }
+  .form-field { margin-bottom: 14px; }
+  .form-label { font-size: 10px; color: var(--text3); font-family: var(--mono); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; display: block; }
+  .form-input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 10px; padding: 11px 14px;
+    color: var(--text); font-family: var(--mono); font-size: 15px;
+    outline: none; transition: border-color 0.15s;
+  }
+  .form-input:focus { border-color: var(--green); }
+  .form-row { display: flex; gap: 10px; }
+  .form-row .form-field { flex: 1; }
+  .btn-submit {
+    width: 100%; padding: 13px;
+    background: var(--green); color: #000;
+    font-family: var(--sans); font-size: 15px; font-weight: 700;
+    border: none; border-radius: 12px; cursor: pointer;
+    margin-top: 8px; transition: all 0.15s;
+  }
+  .btn-submit:hover { background: #00ffb3; transform: translateY(-1px); }
+  .btn-cancel {
+    width: 100%; padding: 11px;
+    background: transparent; color: var(--text3);
+    font-family: var(--sans); font-size: 13px;
+    border: 1px solid var(--border); border-radius: 12px; cursor: pointer;
+    margin-top: 8px; transition: all 0.15s;
+  }
+  .btn-cancel:hover { color: var(--text); border-color: var(--border2); }
+
+  /* ── TAG / PL ─────────────────────────────────────────── */
+  .tag {
+    display: inline-block; padding: 2px 8px; border-radius: 6px;
+    font-size: 10px; font-family: var(--mono); font-weight: 600;
+  }
+  .tag-green { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,229,160,0.2); }
+  .tag-red { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,79,106,0.2); }
+
+  /* Edit ticker inline */
+  .editable-name {
+    background: transparent; border: none; outline: none;
+    font-size: 24px; font-weight: 800; color: var(--text); font-family: var(--sans);
+    width: 120px;
+  }
+  .editable-name:focus { border-bottom: 2px solid var(--green); color: var(--green); }
+
+  .modal-subname { font-size: 12px; color: var(--text3); font-family: var(--mono); padding: 0 20px 4px; }
+
+  /* scrollbar */
+  .modal::-webkit-scrollbar { width: 4px; }
+  .modal::-webkit-scrollbar-track { background: transparent; }
+  .modal::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .modal-bottom-space { height: 24px; }
+</style>
 </head>
-<body class="bg-zinc-950 text-zinc-100 antialiased min-h-screen p-4 pb-20 selection:bg-emerald-500/30 font-sans">
+<body>
+<div id="app">
 
-    <div class="max-w-md mx-auto space-y-6 fade-in">
-        
-        <div class="flex items-center gap-3">
-            <div class="bg-gradient-to-br from-emerald-500 to-teal-600 p-2.5 rounded-xl shadow-lg shadow-emerald-900/20">
-                <i data-lucide="calculator" class="text-white w-6 h-6"></i>
-            </div>
-            <div>
-                <h1 class="text-xl font-bold text-white">Stock Average</h1>
-                <p class="text-xs text-zinc-500">DCA & Target Price Planner</p>
-            </div>
+  <!-- HEADER -->
+  <div class="header">
+    <div>
+      <div class="header-title">DCA <span>Planner</span></div>
+      <div class="header-sub">ติดตามค่าเฉลี่ยหุ้นของคุณ</div>
+    </div>
+    <button class="btn-icon" onclick="openAddModal()">+</button>
+  </div>
+
+  <!-- PORTFOLIO SUMMARY -->
+  <div class="summary" id="summary">
+    <div class="summary-label">TOTAL PORTFOLIO</div>
+    <div class="summary-val" id="totalValue">$0.00</div>
+    <div class="summary-row">
+      <div class="summary-item">
+        <div class="s-label">STOCKS</div>
+        <div class="s-val" id="totalStocks">0</div>
+      </div>
+      <div class="summary-item">
+        <div class="s-label">AVG COST</div>
+        <div class="s-val" id="avgCost">—</div>
+      </div>
+      <div class="summary-item">
+        <div class="s-label">TOTAL SHARES</div>
+        <div class="s-val" id="totalShares">0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">MY HOLDINGS</div>
+  <div class="stock-list" id="stockList">
+    <div class="empty">
+      <div class="empty-icon">📈</div>
+      <div>ยังไม่มีหุ้น</div>
+      <div style="margin-top:6px; font-size:11px">กด + เพื่อเพิ่มหุ้นแรก</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── STOCK DETAIL MODAL ──────────────────────────── -->
+<div class="modal-overlay" id="detailOverlay">
+  <div class="modal" id="detailModal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div>
+        <input class="editable-name" id="editableTicker" value="" onchange="updateTickerName(this.value)">
+      </div>
+      <button class="modal-close" onclick="closeDetail()">✕</button>
+    </div>
+    <div class="modal-subname" id="modalSubname"></div>
+
+    <!-- Current Position -->
+    <div class="position-card">
+      <div class="pos-row">
+        <div class="pos-item">
+          <div class="pos-label">AVG PRICE</div>
+          <div class="pos-val green" id="dAvgPrice">—</div>
         </div>
-
-        <div class="flex p-1 bg-zinc-900/80 rounded-xl border border-zinc-800">
-            <button onclick="switchTab('dca')" id="tab-dca" class="flex-1 py-2 text-sm font-medium rounded-lg transition-all text-white bg-zinc-800 shadow-sm">
-                Average (DCA)
-            </button>
-            <button onclick="switchTab('target')" id="tab-target" class="flex-1 py-2 text-sm font-medium rounded-lg transition-all text-zinc-500 hover:text-zinc-300">
-                Target Price
-            </button>
+        <div class="pos-item">
+          <div class="pos-label">TOTAL COST</div>
+          <div class="pos-val small" id="dTotalCost">—</div>
         </div>
-
-        <div id="view-dca" class="space-y-4">
-            
-            <div class="bg-gradient-to-br from-zinc-900 to-zinc-900/50 rounded-2xl border border-zinc-800 p-5 shadow-xl relative overflow-hidden">
-                <div class="absolute right-0 top-0 p-4 opacity-5">
-                    <i data-lucide="trending-up" class="w-24 h-24 text-white"></i>
-                </div>
-                
-                <div class="text-center space-y-1 mb-6">
-                    <p class="text-xs text-zinc-500 uppercase tracking-wider">New Average Price</p>
-                    <h2 id="dca-avg-price" class="text-4xl font-bold text-emerald-400">0.00</h2>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4 border-t border-zinc-800 pt-4">
-                    <div>
-                        <p class="text-[10px] text-zinc-500 uppercase">Total Shares</p>
-                        <p id="dca-total-shares" class="text-lg font-semibold text-white">0</p>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-[10px] text-zinc-500 uppercase">Total Cost</p>
-                        <p id="dca-total-cost" class="text-lg font-semibold text-zinc-300">0.00</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="space-y-3">
-                <div class="flex justify-between items-center px-1">
-                    <div class="flex items-center gap-2 bg-zinc-900 p-1 rounded-lg border border-zinc-800">
-                        <button onclick="setMode('qty')" id="mode-qty" class="text-[10px] px-3 py-1 rounded-md font-bold transition-all bg-zinc-700 text-white">By Qty</button>
-                        <button onclick="setMode('cash')" id="mode-cash" class="text-[10px] px-3 py-1 rounded-md font-bold transition-all text-zinc-500 hover:text-white">By Cash</button>
-                    </div>
-                    <button onclick="addEntry()" class="text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-lg border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors flex items-center gap-1">
-                        <i data-lucide="plus" class="w-3 h-3"></i> Add Row
-                    </button>
-                </div>
-
-                <div class="grid grid-cols-12 gap-2 px-3 text-[10px] uppercase text-zinc-500 font-bold tracking-wider">
-                    <div class="col-span-1 text-center">#</div>
-                    <div class="col-span-4">Price</div>
-                    <div class="col-span-4" id="col-header-input">Qty</div>
-                    <div class="col-span-2 text-right" id="col-header-calc">Cost</div>
-                    <div class="col-span-1"></div>
-                </div>
-                
-                <div id="entries-list" class="space-y-2 pb-10">
-                    </div>
-            </div>
+        <div class="pos-item">
+          <div class="pos-label">SHARES</div>
+          <div class="pos-val small" id="dShares">—</div>
         </div>
-
-        <div id="view-target" class="hidden space-y-6">
-            <div class="bg-zinc-900/80 rounded-2xl border border-zinc-800 p-6 space-y-5">
-                <h3 class="text-sm font-bold text-white border-b border-zinc-800 pb-2">Current Portfolio</h3>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs text-zinc-500 mb-1">Avg Price</label>
-                        <input type="number" id="tgt-current-price" placeholder="10.00" class="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white font-bold outline-none focus:border-emerald-500/50">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-zinc-500 mb-1">Shares (Qty)</label>
-                        <input type="number" id="tgt-current-qty" placeholder="1000" class="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white font-bold outline-none focus:border-emerald-500/50">
-                    </div>
-                </div>
-
-                <h3 class="text-sm font-bold text-white border-b border-zinc-800 pb-2 pt-2">New Plan</h3>
-                <div>
-                    <label class="block text-xs text-zinc-500 mb-1">Market Price (To Buy)</label>
-                    <input type="number" id="tgt-market-price" placeholder="8.00" class="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white font-bold outline-none focus:border-emerald-500/50">
-                </div>
-                <div>
-                    <label class="block text-xs text-emerald-500 mb-1 font-bold">Desired Avg Price (Target)</label>
-                    <input type="number" id="tgt-target-price" placeholder="9.00" class="w-full bg-emerald-900/10 border border-emerald-500/30 rounded-xl p-3 text-emerald-400 font-bold outline-none focus:ring-1 focus:ring-emerald-500">
-                </div>
-            </div>
-
-            <div id="tgt-result-card" class="bg-zinc-800/50 rounded-2xl border border-zinc-700 p-6 text-center opacity-50">
-                <p class="text-sm text-zinc-400 mb-2">You need to buy</p>
-                <h2 id="tgt-result-qty" class="text-3xl font-black text-white">0 <span class="text-sm font-normal text-zinc-500">shares</span></h2>
-                <div class="mt-2 text-xs text-zinc-500 bg-black/30 py-2 px-4 rounded-lg inline-block">
-                    Cost: <span id="tgt-result-cost" class="text-zinc-300 font-bold">0.00</span>
-                </div>
-            </div>
-        </div>
-
+      </div>
     </div>
 
-    <script>
-        lucide.createIcons();
+    <!-- DCA Result Banner -->
+    <div class="dca-result" id="dcaResult">
+      <div class="dca-result-label">▲ NEW AVG AFTER DCA</div>
+      <div class="dca-result-val" id="dcaNewAvg">—</div>
+      <div class="dca-result-detail" id="dcaDetail"></div>
+    </div>
 
-        // --- STATE ---
-        let state = {
-            activeTab: 'dca',
-            dcaMode: 'qty', // 'qty' or 'cash'
-            dcaEntries: [
-                { id: '1', price: '', val: '' }, // val can be qty OR cash depending on mode
-                { id: '2', price: '', val: '' }
-            ],
-            target: { currentPrice: '', currentQty: '', marketPrice: '', targetPrice: '' }
-        };
+    <!-- DCA Planner Rows -->
+    <div class="dca-section">
+      <div class="dca-section-header">
+        <div class="dca-section-title">DCA PLAN</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="mode-tabs" style="margin-bottom:0">
+            <button class="mode-tab active" id="modeByQty" onclick="setMode('qty')">By Qty</button>
+            <button class="mode-tab" id="modeByCash" onclick="setMode('cash')">By Cash</button>
+          </div>
+          <button class="btn-add-row" onclick="addDcaRow()">+ Row</button>
+        </div>
+      </div>
+      <div class="dca-rows" id="dcaRows"></div>
+    </div>
+    <div class="modal-bottom-space"></div>
+  </div>
+</div>
 
-        // --- LOAD / SAVE ---
-        function loadData() {
-            const saved = localStorage.getItem('stock_avg_v2_data');
-            if (saved) {
-                const loaded = JSON.parse(saved);
-                // Merge loaded data cautiously
-                state.activeTab = loaded.activeTab || 'dca';
-                state.dcaMode = loaded.dcaMode || 'qty';
-                if(loaded.dcaEntries) state.dcaEntries = loaded.dcaEntries;
-                if(loaded.target) state.target = loaded.target;
-                
-                // Restore Target Inputs
-                document.getElementById('tgt-current-price').value = state.target.currentPrice;
-                document.getElementById('tgt-current-qty').value = state.target.currentQty;
-                document.getElementById('tgt-market-price').value = state.target.marketPrice;
-                document.getElementById('tgt-target-price').value = state.target.targetPrice;
-            }
-            switchTab(state.activeTab, false);
-            setMode(state.dcaMode, false);
-            calcTarget();
-        }
+<!-- ── ADD STOCK MODAL ─────────────────────────────── -->
+<div class="add-modal-overlay" id="addModalOverlay">
+  <div class="add-modal">
+    <div class="add-modal-title">เพิ่มหุ้น <span>ใหม่</span></div>
+    <div class="form-field">
+      <label class="form-label">TICKER</label>
+      <input class="form-input" id="newTicker" placeholder="เช่น META, AAPL, NVDA" oninput="this.value=this.value.toUpperCase()">
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label class="form-label">AVG PRICE ($)</label>
+        <input class="form-input" id="newPrice" placeholder="610" type="number" min="0" step="0.01">
+      </div>
+      <div class="form-field">
+        <label class="form-label">TOTAL COST ($)</label>
+        <input class="form-input" id="newCost" placeholder="1800" type="number" min="0" step="0.01">
+      </div>
+    </div>
+    <button class="btn-submit" onclick="addStock()">✓ เพิ่มหุ้น</button>
+    <button class="btn-cancel" onclick="closeAddModal()">ยกเลิก</button>
+  </div>
+</div>
 
-        function saveData() {
-            localStorage.setItem('stock_avg_v2_data', JSON.stringify(state));
-        }
+<script>
+let stocks = JSON.parse(localStorage.getItem('dca_stocks') || '[]');
+let currentStockId = null;
+let dcaMode = 'cash'; // 'qty' or 'cash'
 
-        // --- TABS & MODES ---
-        function switchTab(tab, save = true) {
-            state.activeTab = tab;
-            const btnDca = document.getElementById('tab-dca');
-            const btnTgt = document.getElementById('tab-target');
-            const viewDca = document.getElementById('view-dca');
-            const viewTgt = document.getElementById('view-target');
+function save() { localStorage.setItem('dca_stocks', JSON.stringify(stocks)); }
 
-            const activeClass = "flex-1 py-2 text-sm font-medium rounded-lg transition-all text-white bg-zinc-800 shadow-sm";
-            const inactiveClass = "flex-1 py-2 text-sm font-medium rounded-lg transition-all text-zinc-500 hover:text-zinc-300";
+function getStock() { return stocks.find(s => s.id === currentStockId); }
 
-            if (tab === 'dca') {
-                btnDca.className = activeClass; btnTgt.className = inactiveClass;
-                viewDca.classList.remove('hidden'); viewTgt.classList.add('hidden');
-            } else {
-                btnTgt.className = activeClass; btnDca.className = inactiveClass;
-                viewTgt.classList.remove('hidden'); viewDca.classList.add('hidden');
-            }
-            if(save) saveData();
-        }
+// ── RENDER STOCK LIST ────────────────────────────────
+function render() {
+  const list = document.getElementById('stockList');
+  if (stocks.length === 0) {
+    list.innerHTML = `<div class="empty"><div class="empty-icon">📈</div><div>ยังไม่มีหุ้น</div><div style="margin-top:6px;font-size:11px">กด + เพื่อเพิ่มหุ้นแรก</div></div>`;
+  } else {
+    list.innerHTML = stocks.map(s => {
+      const shares = s.totalCost / s.avgPrice;
+      const ticker2 = s.ticker.length > 4 ? s.ticker.substring(0,4) : s.ticker;
+      return `
+        <div class="stock-card" onclick="openDetail('${s.id}')">
+          <div class="ticker-badge">${ticker2}</div>
+          <div class="stock-info">
+            <div class="stock-name">${s.ticker}</div>
+            <div class="stock-meta">
+              <span>Cost: $${fmt(s.totalCost)}</span>
+              <span>${fmt(shares)} shares</span>
+            </div>
+          </div>
+          <div class="stock-right">
+            <div class="stock-avg">$${fmt(s.avgPrice)}</div>
+            <div class="stock-shares" style="color:var(--text3)">avg price</div>
+          </div>
+          <div class="stock-arrow">›</div>
+        </div>`;
+    }).join('');
+  }
+  // summary
+  const total = stocks.reduce((a, s) => a + s.totalCost, 0);
+  const totalSh = stocks.reduce((a, s) => a + s.totalCost / s.avgPrice, 0);
+  document.getElementById('totalValue').textContent = '$' + fmt(total);
+  document.getElementById('totalStocks').textContent = stocks.length;
+  document.getElementById('totalShares').textContent = fmt2(totalSh);
+  document.getElementById('avgCost').textContent = stocks.length ? '$' + fmt(total / stocks.length) : '—';
+}
 
-        function setMode(mode, save = true) {
-            state.dcaMode = mode;
-            const btnQty = document.getElementById('mode-qty');
-            const btnCash = document.getElementById('mode-cash');
-            const colInput = document.getElementById('col-header-input');
-            const colCalc = document.getElementById('col-header-calc');
+// ── ADD STOCK ────────────────────────────────────────
+function openAddModal() { document.getElementById('addModalOverlay').classList.add('open'); setTimeout(()=>document.getElementById('newTicker').focus(),100); }
+function closeAddModal() { document.getElementById('addModalOverlay').classList.remove('open'); clearAddForm(); }
+function clearAddForm() { ['newTicker','newPrice','newCost'].forEach(id => document.getElementById(id).value = ''); }
 
-            const activeBtn = "text-[10px] px-3 py-1 rounded-md font-bold transition-all bg-zinc-700 text-white shadow-sm";
-            const inactiveBtn = "text-[10px] px-3 py-1 rounded-md font-bold transition-all text-zinc-500 hover:text-white";
+function addStock() {
+  const ticker = document.getElementById('newTicker').value.trim().toUpperCase();
+  const price = parseFloat(document.getElementById('newPrice').value);
+  const cost = parseFloat(document.getElementById('newCost').value);
+  if (!ticker || isNaN(price) || isNaN(cost) || price <= 0 || cost <= 0) {
+    shakeModal(); return;
+  }
+  stocks.push({ id: Date.now().toString(), ticker, avgPrice: price, totalCost: cost, dcaRows: [] });
+  save(); render(); closeAddModal();
+}
 
-            if (mode === 'qty') {
-                btnQty.className = activeBtn; btnCash.className = inactiveBtn;
-                colInput.innerText = "Quantity";
-                colCalc.innerText = "Cost";
-            } else {
-                btnCash.className = activeBtn; btnQty.className = inactiveBtn;
-                colInput.innerText = "Cash ($)";
-                colCalc.innerText = "Qty";
-            }
-            
-            renderDCA();
-            if(save) saveData();
-        }
+function shakeModal() {
+  const m = document.querySelector('.add-modal');
+  m.style.animation = 'none'; m.offsetHeight;
+  m.style.animation = 'shake 0.4s ease';
+}
 
-        // --- DCA LOGIC ---
-        function addEntry() {
-            state.dcaEntries.push({ id: Math.random().toString(36).substr(2, 9), price: '', val: '' });
-            renderDCA();
-            saveData();
-        }
+// ── DETAIL VIEW ──────────────────────────────────────
+function openDetail(id) {
+  currentStockId = id;
+  dcaMode = 'cash';
+  document.getElementById('modeByQty').classList.remove('active');
+  document.getElementById('modeByCash').classList.add('active');
+  renderDetail();
+  document.getElementById('detailOverlay').classList.add('open');
+}
+function closeDetail() { document.getElementById('detailOverlay').classList.remove('open'); }
 
-        function removeEntry(id) {
-            if (state.dcaEntries.length <= 1) return; 
-            state.dcaEntries = state.dcaEntries.filter(e => e.id !== id);
-            renderDCA();
-            saveData();
-        }
+function renderDetail() {
+  const s = getStock();
+  if (!s) return;
+  const shares = s.totalCost / s.avgPrice;
+  document.getElementById('editableTicker').value = s.ticker;
+  document.getElementById('modalSubname').textContent = `${fmt(shares)} shares · $${fmt(s.totalCost)} invested`;
+  document.getElementById('dAvgPrice').textContent = '$' + fmt(s.avgPrice);
+  document.getElementById('dTotalCost').textContent = '$' + fmt(s.totalCost);
+  document.getElementById('dShares').textContent = fmt(shares);
+  renderDcaRows();
+  calcDca();
+}
 
-        function updateEntry(id, field, val) {
-            const entry = state.dcaEntries.find(e => e.id === id);
-            if (entry) {
-                entry[field] = val;
-                renderDCA(false); 
-                saveData();
-            }
-        }
+function updateTickerName(val) {
+  const s = getStock(); if (!s) return;
+  s.ticker = val.toUpperCase(); save(); render();
+  document.getElementById('editableTicker').value = s.ticker;
+}
 
-        function renderDCA(fullRender = true) {
-            const isQtyMode = state.dcaMode === 'qty';
-            const inputPlaceholder = isQtyMode ? "Qty" : "Cash Amt";
+// ── DCA ROWS ─────────────────────────────────────────
+function setMode(mode) {
+  dcaMode = mode;
+  document.getElementById('modeByQty').classList.toggle('active', mode === 'qty');
+  document.getElementById('modeByCash').classList.toggle('active', mode === 'cash');
+  renderDcaRows(); calcDca();
+}
 
-            if (fullRender) {
-                const list = document.getElementById('entries-list');
-                list.innerHTML = '';
-                state.dcaEntries.forEach((entry, index) => {
-                    const html = `
-                    <div class="grid grid-cols-12 gap-2 items-center bg-zinc-900 border border-zinc-800 p-3 rounded-xl">
-                        <div class="col-span-1 text-center text-xs text-zinc-600 font-bold">${index + 1}</div>
-                        <div class="col-span-4">
-                            <input type="number" value="${entry.price}" oninput="updateEntry('${entry.id}', 'price', this.value)" placeholder="Price" class="w-full bg-black/50 border border-zinc-800 rounded-lg px-2 py-1.5 text-white text-sm outline-none focus:border-emerald-500/50">
-                        </div>
-                        <div class="col-span-4">
-                            <input type="number" value="${entry.val}" oninput="updateEntry('${entry.id}', 'val', this.value)" placeholder="${inputPlaceholder}" class="w-full bg-black/50 border border-zinc-800 rounded-lg px-2 py-1.5 text-white text-sm outline-none focus:border-emerald-500/50 ${!isQtyMode ? 'text-emerald-400 font-bold' : ''}">
-                        </div>
-                        <div class="col-span-2 text-right">
-                             <span class="text-[10px] text-zinc-500 block font-mono total-row-calc opacity-50">-</span>
-                        </div>
-                        <div class="col-span-1 text-right">
-                            <button onclick="removeEntry('${entry.id}')" class="text-zinc-600 hover:text-rose-500"><i data-lucide="x" width="14"></i></button>
-                        </div>
-                    </div>`;
-                    list.insertAdjacentHTML('beforeend', html);
-                });
-                lucide.createIcons();
-            }
+function addDcaRow() {
+  const s = getStock(); if (!s) return;
+  if (!s.dcaRows) s.dcaRows = [];
+  s.dcaRows.push({ price: '', cash: '', qty: '' });
+  save(); renderDcaRows();
+}
 
-            // Calculation
-            let grandTotalQty = 0;
-            let grandTotalCost = 0;
-            const rowCalcs = document.querySelectorAll('.total-row-calc');
+function removeDcaRow(i) {
+  const s = getStock(); if (!s) return;
+  s.dcaRows.splice(i, 1); save(); renderDcaRows(); calcDca();
+}
 
-            state.dcaEntries.forEach((e, i) => {
-                const p = parseFloat(e.price) || 0;
-                const v = parseFloat(e.val) || 0;
-                
-                let rowQty = 0;
-                let rowCost = 0;
+function updateDcaRow(i, field, val) {
+  const s = getStock(); if (!s) return;
+  s.dcaRows[i][field] = val; save(); calcDca();
+}
 
-                if (p > 0) {
-                    if (isQtyMode) {
-                        // val is Qty
-                        rowQty = v;
-                        rowCost = p * v;
-                    } else {
-                        // val is Cash
-                        rowCost = v;
-                        rowQty = v / p; // Calculate implied quantity
-                    }
-                }
+function renderDcaRows() {
+  const s = getStock();
+  const rows = s?.dcaRows || [];
+  const container = document.getElementById('dcaRows');
+  if (rows.length === 0) {
+    container.innerHTML = `<div style="text-align:center;padding:20px 0;font-size:11px;color:var(--text3);font-family:var(--mono)">กด "+ Row" เพื่อวางแผน DCA</div>`;
+    return;
+  }
+  container.innerHTML = rows.map((r, i) => `
+    <div class="dca-row">
+      <div class="dca-row-num">${i+1}</div>
+      <div class="input-group">
+        <div class="input-label">PRICE ($)</div>
+        <input class="input-field" placeholder="590" value="${r.price}" type="number" min="0" step="0.01"
+          oninput="updateDcaRow(${i},'price',this.value)">
+      </div>
+      ${dcaMode === 'cash' ? `
+      <div class="input-group">
+        <div class="input-label">CASH ($)</div>
+        <input class="input-field" placeholder="90" value="${r.cash}" type="number" min="0" step="0.01"
+          oninput="updateDcaRow(${i},'cash',this.value)">
+      </div>
+      ` : `
+      <div class="input-group">
+        <div class="input-label">SHARES</div>
+        <input class="input-field" placeholder="1.5" value="${r.qty}" type="number" min="0" step="0.0001"
+          oninput="updateDcaRow(${i},'qty',this.value)">
+      </div>
+      `}
+      <button class="btn-del-row" onclick="removeDcaRow(${i})">✕</button>
+    </div>
+  `).join('');
+}
 
-                grandTotalQty += rowQty;
-                grandTotalCost += rowCost;
+// ── CALCULATE NEW AVG ────────────────────────────────
+function calcDca() {
+  const s = getStock(); if (!s) return;
+  const rows = s.dcaRows || [];
+  const banner = document.getElementById('dcaResult');
 
-                // Update Row Display
-                if(rowCalcs[i]) {
-                    if (isQtyMode) {
-                        rowCalcs[i].innerText = formatNum(rowCost);
-                    } else {
-                        rowCalcs[i].innerText = rowQty > 0 ? rowQty.toFixed(4) : '-'; // Show 4 decimals for fractional shares
-                    }
-                    rowCalcs[i].style.opacity = (rowQty > 0 || rowCost > 0) ? '1' : '0.3';
-                }
-            });
+  let addedCost = 0, addedShares = 0;
+  for (const r of rows) {
+    const p = parseFloat(r.price);
+    if (isNaN(p) || p <= 0) continue;
+    if (dcaMode === 'cash') {
+      const c = parseFloat(r.cash);
+      if (!isNaN(c) && c > 0) { addedCost += c; addedShares += c / p; }
+    } else {
+      const q = parseFloat(r.qty);
+      if (!isNaN(q) && q > 0) { addedShares += q; addedCost += q * p; }
+    }
+  }
 
-            // Update Summary
-            const avg = grandTotalQty > 0 ? (grandTotalCost / grandTotalQty) : 0;
-            document.getElementById('dca-avg-price').innerText = formatNum(avg);
-            document.getElementById('dca-total-shares').innerText = grandTotalQty.toLocaleString(undefined, { maximumFractionDigits: 4 });
-            document.getElementById('dca-total-cost').innerText = formatNum(grandTotalCost);
-        }
+  if (addedShares <= 0 || addedCost <= 0) { banner.classList.remove('show'); return; }
 
-        // --- TARGET LOGIC ---
-        function updateTargetInput(field, val) {
-            state.target[field] = val;
-            calcTarget();
-            saveData();
-        }
+  const origShares = s.totalCost / s.avgPrice;
+  const newTotalCost = s.totalCost + addedCost;
+  const newTotalShares = origShares + addedShares;
+  const newAvg = newTotalCost / newTotalShares;
 
-        ['tgt-current-price', 'tgt-current-qty', 'tgt-market-price', 'tgt-target-price'].forEach(id => {
-            document.getElementById(id).addEventListener('input', (e) => {
-                const field = id.replace('tgt-', '').replace(/-([a-z])/g, (g) => g[1].toUpperCase());
-                updateTargetInput(field, e.target.value);
-            });
-        });
+  document.getElementById('dcaNewAvg').textContent = '$' + fmt(newAvg);
+  document.getElementById('dcaDetail').innerHTML = `
+    <span>Total Cost: $${fmt(newTotalCost)}</span>
+    <span>Total Shares: ${fmt(newTotalShares)}</span>
+    <span>Added: $${fmt(addedCost)} / ${fmt(addedShares)} sh</span>
+  `;
+  banner.classList.add('show');
+}
 
-        function calcTarget() {
-            const curP = parseFloat(state.target.currentPrice) || 0;
-            const curQ = parseFloat(state.target.currentQty) || 0;
-            const mktP = parseFloat(state.target.marketPrice) || 0;
-            const tgtP = parseFloat(state.target.targetPrice) || 0;
-            const card = document.getElementById('tgt-result-card');
-            const resQty = document.getElementById('tgt-result-qty');
-            const resCost = document.getElementById('tgt-result-cost');
+// ── UTILS ────────────────────────────────────────────
+function fmt(n) { return isNaN(n) ? '—' : Number(n).toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmt2(n) { return isNaN(n) ? '—' : Number(n).toLocaleString('en-US', {minimumFractionDigits:4,maximumFractionDigits:4}); }
 
-            if (curP > 0 && curQ > 0 && mktP > 0 && tgtP > 0) {
-                const denominator = mktP - tgtP;
-                let neededQty = 0;
-                if (denominator !== 0) neededQty = (curQ * (tgtP - curP)) / denominator;
+// close overlay on backdrop click
+document.getElementById('detailOverlay').addEventListener('click', function(e) { if (e.target === this) closeDetail(); });
+document.getElementById('addModalOverlay').addEventListener('click', function(e) { if (e.target === this) closeAddModal(); });
 
-                if (neededQty > 0) {
-                    card.className = "bg-emerald-900/20 rounded-2xl border border-emerald-500/50 p-6 text-center shadow-lg shadow-emerald-900/20";
-                    resQty.innerHTML = `${Math.ceil(neededQty).toLocaleString()} <span class="text-sm font-normal text-emerald-300">shares</span>`;
-                    resCost.innerText = formatNum(Math.ceil(neededQty) * mktP);
-                } else {
-                    card.className = "bg-rose-900/20 rounded-2xl border border-rose-500/30 p-6 text-center";
-                    resQty.innerHTML = `<span class="text-xl">Impossible</span>`;
-                    resCost.innerText = "0.00";
-                }
-            } else {
-                 card.className = "bg-zinc-800/50 rounded-2xl border border-zinc-700 p-6 text-center opacity-50";
-                 resQty.innerHTML = `0 <span class="text-sm font-normal text-zinc-500">shares</span>`;
-                 resCost.innerText = "0.00";
-            }
-        }
+// shake animation
+const style = document.createElement('style');
+style.textContent = `@keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-8px)} 40%,80%{transform:translateX(8px)} }`;
+document.head.appendChild(style);
 
-        function formatNum(n) {
-            return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        }
-
-        // Init
-        loadData();
-
-    </script>
+render();
+</script>
 </body>
 </html>
