@@ -446,6 +446,44 @@
 
     .empty-state { text-align: center; color: var(--green); padding: 30px; font-size: 13px; font-weight: 600; }
 
+    /* ── Currency Toggle ── */
+    .currency-toggle {
+      display: flex;
+      background: var(--surface2);
+      border: 1.5px solid var(--border2);
+      border-radius: 10px;
+      overflow: hidden;
+      height: 36px;
+    }
+    .cur-btn {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0 14px;
+      transition: all 0.2s;
+    }
+    .cur-btn.active {
+      background: var(--accent);
+      color: #000;
+    }
+    .rate-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: #0088ff0a;
+      border: 1px solid #0088ff30;
+      border-radius: 10px;
+    }
+    .rate-label { font-size: 11px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+    .rate-input-wrap { flex: 1; }
+
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: var(--bg); }
     ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
@@ -506,6 +544,8 @@ function App() {
   const [added,    setAdded]    = useState(() => load("dca_added", 0));
   const [assets,   setAssets]   = useState(() => load("dca_assets", DEFAULT_ASSETS));
   const [tranches, setTranches] = useState(() => load("dca_tranches", DEFAULT_TRANCHES));
+  const [currency, setCurrency] = useState(() => load("dca_currency", "THB"));
+  const [rate,     setRate]     = useState(() => load("dca_rate", 33.5));
   const [newName,  setNewName]  = useState("");
   const [newPct,   setNewPct]   = useState(5);
   const [selected, setSelected] = useState(null);
@@ -518,10 +558,19 @@ function App() {
     localStorage.setItem("dca_added",    JSON.stringify(added));
     localStorage.setItem("dca_assets",   JSON.stringify(assets));
     localStorage.setItem("dca_tranches", JSON.stringify(tranches));
+    localStorage.setItem("dca_currency", JSON.stringify(currency));
+    localStorage.setItem("dca_rate",     JSON.stringify(rate));
     setSaved(true);
     const t = setTimeout(() => setSaved(false), 1200);
     return () => clearTimeout(t);
-  }, [initial, added, assets, tranches]);
+  }, [initial, added, assets, tranches, currency, rate]);
+
+  // Currency helpers — ทุกอย่างเก็บในบาท แค่แสดงเป็น USD
+  const isUSD  = currency === "USD";
+  const sym    = isUSD ? "$" : "฿";
+  const disp   = (thb) => isUSD ? thb / rate : thb;          // บาท → แสดง
+  const toThb  = (val) => isUSD ? val * rate : val;           // input → บาท
+  const fmtC   = (thb) => fmt(disp(thb));                    // format พร้อม convert
 
   const totalCapital   = initial + added;
   const totalAllocated = assets.reduce((s, a) => s + a.targetPct, 0);
@@ -557,7 +606,11 @@ function App() {
           </div>
           <div className="sub">Dollar Cost Averaging</div>
         </div>
-        <div style={{ textAlign: "right" }}>
+        <div style={{ textAlign: "right", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px" }}>
+          <div className="currency-toggle">
+            <button className={`cur-btn ${!isUSD ? "active" : ""}`} onClick={() => setCurrency("THB")}>฿ THB</button>
+            <button className={`cur-btn ${isUSD ? "active" : ""}`} onClick={() => setCurrency("USD")}>$ USD</button>
+          </div>
           <div className="save-indicator">{saved ? "✓ SAVED" : "AUTO-SAVE"}</div>
         </div>
       </div>
@@ -574,17 +627,25 @@ function App() {
         <div className="pool-grid">
           <div>
             <div className="pool-label">ทุนตั้งต้น</div>
-            <NumInput value={initial} onChange={setInitial} prefix="฿" />
+            <NumInput value={parseFloat(disp(initial).toFixed(2))} onChange={v => setInitial(toThb(v))} prefix={sym} />
           </div>
           <div>
             <div className="pool-label">เงินที่เติมเพิ่ม</div>
-            <NumInput value={added} onChange={setAdded} prefix="฿" />
+            <NumInput value={parseFloat(disp(added).toFixed(2))} onChange={v => setAdded(toThb(v))} prefix={sym} />
           </div>
           <div className="pool-total">
             <div className="pool-total-label">รวมเงินทุนทั้งหมด</div>
-            <div className="pool-total-value">฿{fmt(totalCapital)}</div>
+            <div className="pool-total-value">{sym}{fmtC(totalCapital)}</div>
           </div>
         </div>
+        {isUSD && (
+          <div className="rate-row">
+            <div className="rate-label">🔄 1 USD =</div>
+            <div className="rate-input-wrap">
+              <NumInput value={rate} onChange={setRate} suffix="฿" />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ══ TAB: TRACKER ══ */}
@@ -592,11 +653,11 @@ function App() {
         <div className="stats-row">
           <div className="stat-box">
             <div className="stat-label">ซื้อไปแล้ว</div>
-            <div className="stat-value" style={{ color: "var(--warn)" }}>฿{fmt(totalBought)}</div>
+            <div className="stat-value" style={{ color: "var(--warn)" }}>{sym}{fmtC(totalBought)}</div>
           </div>
           <div className="stat-box">
             <div className="stat-label">กระสุนเหลือ</div>
-            <div className="stat-value" style={{ color: "var(--accent)" }}>฿{fmt(totalRemaining)}</div>
+            <div className="stat-value" style={{ color: "var(--accent)" }}>{sym}{fmtC(totalRemaining)}</div>
           </div>
           <div className="stat-box">
             <div className="stat-label">Alloc รวม</div>
@@ -641,14 +702,14 @@ function App() {
               </div>
               <div onClick={e => e.stopPropagation()}>
                 <div className="field-label">ซื้อแล้ว</div>
-                <NumInput value={a.bought} onChange={v => updateAsset(a.id, "bought", v)} prefix="฿" />
+                <NumInput value={parseFloat(disp(a.bought).toFixed(2))} onChange={v => updateAsset(a.id, "bought", toThb(v))} prefix={sym} />
               </div>
               <div style={{ textAlign: "right" }}>
-                <div className="quota-hint">โควตา ฿{fmt(a.quota)}</div>
+                <div className="quota-hint">โควตา {sym}{fmtC(a.quota)}</div>
                 <div className="remaining-val" style={{
                   color: a.remaining <= 0 ? "var(--green)" : a.remaining < a.quota * 0.35 ? "var(--warn)" : "var(--danger)"
                 }}>
-                  {a.remaining <= 0 ? "✓ FULL" : `฿${fmt(a.remaining)}`}
+                  {a.remaining <= 0 ? "✓ FULL" : `${sym}${fmtC(a.remaining)}`}
                 </div>
               </div>
             </div>
@@ -662,7 +723,7 @@ function App() {
 
             {/* Tranche breakdown when expanded */}
             <div className={`tranche-panel ${selected === a.id ? "open" : ""}`} onClick={e => e.stopPropagation()}>
-              <div className="tranche-hint">แผนยิงไม้ · โควตาเหลือ ฿{fmt(Math.max(a.remaining, 0))}</div>
+              <div className="tranche-hint">แผนยิงไม้ · โควตาเหลือ {sym}{fmtC(Math.max(a.remaining, 0))}</div>
               <div className="tranche-mini-grid">
                 {tranches.map(t => {
                   const amt = (Math.max(a.remaining, 0) * t.pct) / 100;
@@ -671,7 +732,7 @@ function App() {
                       style={{ background: t.color + "14", border: `1px solid ${t.color}44` }}>
                       <div className="tm-label" style={{ color: t.color }}>{t.label}</div>
                       <div className="tm-pct">{t.pct}%</div>
-                      <div className="tm-amt" style={{ color: t.color }}>฿{fmt(amt)}</div>
+                      <div className="tm-amt" style={{ color: t.color }}>{sym}{fmtC(amt)}</div>
                     </div>
                   );
                 })}
@@ -723,7 +784,7 @@ function App() {
         <div className="card">
           <div className="card-title">🎯 สรุปยอดแต่ละไม้</div>
           <div style={{ fontSize: "11px", color: "var(--muted)", marginBottom: "14px", fontWeight: 500 }}>
-            คำนวณจาก <span style={{ color: "var(--accent)", fontWeight: 700 }}>กระสุนที่เหลือรวม</span> ฿{fmt(totalRemaining)}
+            คำนวณจาก <span style={{ color: "var(--accent)", fontWeight: 700 }}>กระสุนที่เหลือรวม</span> {sym}{fmtC(totalRemaining)}
           </div>
           <div className="tranche-summary-grid">
             {tranches.map(t => (
@@ -731,7 +792,7 @@ function App() {
                 style={{ background: t.color + "12", border: `1px solid ${t.color}44` }}>
                 <div className="tb-label" style={{ color: t.color }}>{t.label}</div>
                 <div className="tb-pct">{t.pct}% ของที่เหลือ</div>
-                <div className="tb-amount" style={{ color: t.color }}>฿{fmt((totalRemaining * t.pct) / 100)}</div>
+                <div className="tb-amount" style={{ color: t.color }}>{sym}{fmtC((totalRemaining * t.pct) / 100)}</div>
                 <div className="tb-sub">รวมทุกตัว</div>
               </div>
             ))}
@@ -746,7 +807,7 @@ function App() {
               <div key={a.id} className="per-asset-row">
                 <div className="par-top">
                   <div className="par-name">{a.name}</div>
-                  <div className="par-quota">เหลือ ฿{fmt(a.remaining)}</div>
+                  <div className="par-quota">เหลือ {sym}{fmtC(a.remaining)}</div>
                 </div>
                 <div className="par-grid">
                   {tranches.map(t => {
@@ -755,7 +816,7 @@ function App() {
                       <div key={t.label} className="par-t"
                         style={{ background: t.color + "14", border: `1px solid ${t.color}33` }}>
                         <div className="pt-label" style={{ color: t.color }}>{t.label}</div>
-                        <div className="pt-amt" style={{ color: t.color }}>฿{fmt(amt)}</div>
+                        <div className="pt-amt" style={{ color: t.color }}>{sym}{fmtC(amt)}</div>
                         <div className="pt-pct" style={{ color: t.color + "99" }}>{t.pct}%</div>
                       </div>
                     );
