@@ -340,6 +340,15 @@
   .modal::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
   .modal-bottom-space { height: 24px; }
+  .btn-delete-stock {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: calc(100% - 32px); margin: 16px 16px 0;
+    padding: 12px; border-radius: 12px;
+    background: var(--red-dim); border: 1px solid rgba(255,79,106,0.3);
+    color: var(--red); font-family: var(--sans); font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .btn-delete-stock:hover { background: rgba(255,79,106,0.25); border-color: var(--red); }
 </style>
 </head>
 <body>
@@ -435,6 +444,7 @@
       </div>
       <div class="dca-rows" id="dcaRows"></div>
     </div>
+    <button class="btn-delete-stock" onclick="deleteStock()">🗑 ลบหุ้นนี้ออกจากพอร์ต</button>
     <div class="modal-bottom-space"></div>
   </div>
 </div>
@@ -657,7 +667,14 @@ function calcDca() {
 function fmt(n) { return isNaN(n) ? '—' : Number(n).toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmt2(n) { return isNaN(n) ? '—' : Number(n).toLocaleString('en-US', {minimumFractionDigits:4,maximumFractionDigits:4}); }
 
-// close overlay on backdrop click
+function deleteStock() {
+  const s = getStock(); if (!s) return;
+  if (!confirm(`ลบ ${s.ticker} ออกจากพอร์ตเลยนะ?`)) return;
+  stocks = stocks.filter(x => x.id !== currentStockId);
+  save(); render(); closeDetail();
+}
+
+
 document.getElementById('detailOverlay').addEventListener('click', function(e) { if (e.target === this) closeDetail(); });
 document.getElementById('addModalOverlay').addEventListener('click', function(e) { if (e.target === this) closeAddModal(); });
 
