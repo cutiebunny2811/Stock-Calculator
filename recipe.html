@@ -380,7 +380,6 @@
 </head>
 <body>
 
-<!-- SETUP BANNER -->
 <div class="setup-banner" id="setupBanner">
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
   <span style="white-space:nowrap">ใส่ Supabase credentials:</span>
@@ -389,26 +388,22 @@
   <button class="btn-connect" onclick="connectSupabase()">Connect →</button>
 </div>
 
-<!-- MOBILE HEADER -->
 <div class="mobile-header" style="display:none">
   <div class="mobile-logo">MISE</div>
   <div class="mobile-db-badge" id="mobileDbBadge"><span class="db-dot"></span><span id="mobileDbStatus">ไม่ได้เชื่อมต่อ</span></div>
 </div>
 
-<!-- MOBILE CATEGORY CHIPS -->
 <div class="mobile-chips" style="display:none" id="mobileChips">
   <div class="chip active" data-cat="all" onclick="filterCatMobile('all', this)">
     <span class="chip-dot" style="background:#888"></span>ทั้งหมด
   </div>
 </div>
 
-<!-- FAB -->
 <button class="fab" style="display:none" onclick="openAdd()">
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 </button>
 
 <div class="app">
-  <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="logo">
       <div class="logo-text">MISE</div>
@@ -431,7 +426,6 @@
     <div id="cat-list" class="sidebar-section" style="padding-top:0"></div>
   </aside>
 
-  <!-- MAIN -->
   <main class="main">
     <div class="topbar">
       <div class="search-wrap">
@@ -453,7 +447,6 @@
   </main>
 </div>
 
-<!-- ADD / EDIT MODAL -->
 <div class="overlay" id="addOverlay" onclick="overlayClose(event,'addOverlay')">
   <div class="modal">
     <div class="modal-header">
@@ -463,7 +456,6 @@
       </button>
     </div>
 
-    <!-- Image upload -->
     <div class="field">
       <label>รูปภาพ (ถ้ามี)</label>
       <div class="upload-zone" id="uploadZone"
@@ -509,7 +501,6 @@
   </div>
 </div>
 
-<!-- VIEW MODAL -->
 <div class="overlay" id="viewOverlay" onclick="overlayClose(event,'viewOverlay')">
   <div class="modal">
     <div class="modal-header" style="margin-bottom:0">
@@ -675,7 +666,8 @@ async function saveRecipe() {
 
 async function deleteRecipe(id) {
   if (!confirm('ลบสูตรนี้?')) return;
-  const r = recipes.find(x => x.id === id);
+  // FIX: String conversion for id comparison
+  const r = recipes.find(x => String(x.id) === String(id));
   try {
     if (r?.image_url) await removeImageFromStorage(r.image_url);
     const { error } = await sb.from('mise_recipes').delete().eq('id', id);
@@ -845,7 +837,8 @@ function openAdd() {
 }
 
 function editRecipe(id) {
-  const r = recipes.find(x => x.id === id);
+  // FIX: String conversion for id comparison
+  const r = recipes.find(x => String(x.id) === String(id));
   if (!r) return;
   editId = id; selectedCat = r.cat; existingImageUrl = r.image_url || null; pendingFile = null;
   document.getElementById('modalTitle').textContent = 'แก้ไขสูตร';
@@ -858,7 +851,8 @@ function editRecipe(id) {
 }
 
 function viewRecipe(id) {
-  const r = recipes.find(x => x.id === id);
+  // FIX: String conversion for id comparison
+  const r = recipes.find(x => String(x.id) === String(id));
   if (!r) return;
   const cat = CAT_MAP[r.cat] || CAT_MAP.other;
   const ings = r.ingredients.split(',').map(s => s.trim()).filter(Boolean);
