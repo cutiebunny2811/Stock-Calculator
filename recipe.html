@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MISE — Recipe Notes</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #0a0a0a; --surface: #111111; --surface2: #181818; --surface3: #202020;
+    --border: #2a2a2a; --border2: #333; --text: #e8e8e8; --text2: #888; --text3: #555;
+    --accent: #e8d5b0; --accent2: #c9a96e; --red: #e05252; --green: #52c27a;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Mono',monospace; min-height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+
+  /* ─── SETUP BANNER ─── */
+  .setup-banner {
+    background:#120f00; border-bottom:1px solid #c9a96e33;
+    padding:10px 20px; display:flex; align-items:center; gap:10px;
+    font-size:12px; color:var(--accent); flex-shrink:0; flex-wrap:wrap;
+  }
+  .setup-banner.hidden { display:none; }
+  .setup-banner input {
+    background:#0a0a0a; border:1px solid #c9a96e44; border-radius:6px;
+    padding:6px 11px; color:var(--accent); font-family:'DM Mono',monospace;
+    font-size:11px; outline:none; flex:1; min-width:200px;
+  }
+  .setup-banner input::placeholder { color:#c9a96e55; }
+  .btn-connect {
+    padding:7px 16px; background:var(--accent); color:#0a0a0a;
+    border:none; border-radius:7px; font-family:'Syne',sans-serif;
+    font-weight:700; font-size:10px; letter-spacing:0.08em; cursor:pointer; white-space:nowrap;
+  }
+  .btn-connect:hover { background:var(--accent2); }
+
+  /* ─── LAYOUT ─── */
+  .app { display:flex; flex:1; overflow:hidden; }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar {
+    width:220px; min-width:220px; background:var(--surface);
+    border-right:1px solid var(--border); display:flex;
+    flex-direction:column; overflow-y:auto;
+  }
+  .logo { padding:24px 20px 18px; border-bottom:1px solid var(--border); }
+  .logo-text { font-family:'Syne',sans-serif; font-weight:800; font-size:22px; letter-spacing:0.12em; color:var(--accent); }
+  .logo-sub { font-size:9px; color:var(--text3); letter-spacing:0.2em; text-transform:uppercase; margin-top:2px; }
+  .db-badge {
+    display:inline-flex; align-items:center; gap:5px; margin-top:9px;
+    padding:3px 9px; border-radius:20px; font-size:9px; letter-spacing:0.1em;
+    background:var(--surface3); color:var(--text3); border:1px solid var(--border);
+  }
+  .db-badge.connected { color:var(--green); border-color:#52c27a33; background:#52c27a0d; }
+  .db-dot { width:5px; height:5px; border-radius:50%; background:currentColor; }
+
+  .sidebar-section { padding:16px 12px 8px; }
+  .sidebar-label { font-size:9px; letter-spacing:0.2em; text-transform:uppercase; color:var(--text3); padding:0 8px; margin-bottom:6px; }
+  .cat-btn {
+    display:flex; align-items:center; gap:10px; padding:9px 10px;
+    border-radius:8px; cursor:pointer; transition:all 0.15s; width:100%;
+    background:none; border:none; color:var(--text2);
+    font-family:'DM Mono',monospace; font-size:12px; text-align:left;
+  }
+  .cat-btn:hover { background:var(--surface2); color:var(--text); }
+  .cat-btn.active { background:var(--surface3); color:var(--text); }
+  .cat-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .cat-count { margin-left:auto; font-size:10px; color:var(--text3); background:var(--surface3); padding:2px 7px; border-radius:10px; }
+
+  .add-recipe-btn {
+    margin:12px 12px 0; padding:11px; background:var(--accent); color:#0a0a0a;
+    border:none; border-radius:10px; font-family:'Syne',sans-serif; font-weight:700;
+    font-size:11px; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:8px; transition:all 0.2s;
+  }
+  .add-recipe-btn:hover { background:var(--accent2); transform:translateY(-1px); }
+
+  /* ─── MAIN ─── */
+  .main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+  .topbar {
+    padding:20px 24px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:16px; background:var(--surface);
+  }
+  .search-wrap { flex:1; position:relative; }
+  .search-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--text3); pointer-events:none; }
+  .search-input {
+    width:100%; background:var(--surface2); border:1px solid var(--border);
+    border-radius:10px; padding:10px 14px 10px 40px; color:var(--text);
+    font-family:'DM Mono',monospace; font-size:13px; outline:none; transition:border-color 0.2s;
+  }
+  .search-input::placeholder { color:var(--text3); }
+  .search-input:focus { border-color:var(--border2); }
+  .sort-btn {
+    padding:9px 14px; background:var(--surface2); border:1px solid var(--border);
+    border-radius:10px; color:var(--text2); font-family:'DM Mono',monospace; font-size:11px;
+    cursor:pointer; display:flex; align-items:center; gap:6px; transition:all 0.15s; white-space:nowrap;
+  }
+  .sort-btn:hover { border-color:var(--border2); color:var(--text); }
+
+  .content { flex:1; overflow-y:auto; padding:20px 24px; }
+  .content::-webkit-scrollbar { width:4px; }
+  .content::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+  .view-header { display:flex; align-items:baseline; gap:12px; margin-bottom:20px; }
+  .view-title { font-family:'Syne',sans-serif; font-weight:700; font-size:22px; }
+  .view-count { font-size:12px; color:var(--text3); }
+
+  /* ─── GRID & CARDS ─── */
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:14px; }
+
+  .card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; cursor:pointer; transition:all 0.2s;
+    overflow:hidden; display:flex; flex-direction:column;
+  }
+  .card:hover { border-color:var(--border2); transform:translateY(-2px); }
+
+  .card-top-bar { height:2.5px; background:var(--cat-color,var(--border)); opacity:0.7; }
+
+  .card-body { padding:14px 16px 13px; flex:1; display:flex; flex-direction:column; }
+  .card-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:8px; }
+  .card-title { font-family:'Syne',sans-serif; font-weight:700; font-size:14px; line-height:1.3; flex:1; margin-right:8px; }
+  .card-cat {
+    font-size:9px; letter-spacing:0.12em; text-transform:uppercase;
+    padding:4px 8px; border-radius:6px; background:var(--surface3);
+    color:var(--cat-color,var(--text3)); white-space:nowrap; flex-shrink:0;
+    display:flex; align-items:center; gap:5px;
+  }
+  .card-cat svg { opacity:0.85; }
+  .card-ingredients {
+    font-size:11px; color:var(--text2); line-height:1.7; flex:1;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+    margin-bottom:10px;
+  }
+  .card-ingredients span { color:var(--accent); font-style:italic; }
+  .card-footer { display:flex; align-items:center; justify-content:space-between; padding-top:10px; border-top:1px solid var(--border); }
+  .card-date { font-size:10px; color:var(--text3); }
+  .card-actions { display:flex; gap:4px; opacity:0; transition:opacity 0.15s; }
+  .card:hover .card-actions { opacity:1; }
+  .icon-btn {
+    width:28px; height:28px; border-radius:7px; border:1px solid var(--border);
+    background:var(--surface3); color:var(--text2);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.15s;
+  }
+  .icon-btn:hover { color:var(--text); border-color:var(--border2); }
+  .icon-btn.del:hover { color:var(--red); border-color:var(--red); }
+
+  /* ─── SKELETON & EMPTY ─── */
+  .skeleton { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; animation:pulse 1.6s ease-in-out infinite; }
+  .sk-img { height:155px; background:var(--surface2); }
+  .sk-body { padding:14px 16px; }
+  .sk-line { height:11px; border-radius:5px; background:var(--surface3); margin-bottom:10px; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.45} }
+
+  .empty { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:80px 20px; color:var(--text3); text-align:center; gap:12px; }
+  .empty svg { opacity:0.3; }
+  .empty-title { font-family:'Syne',sans-serif; font-size:18px; color:var(--text2); }
+  .empty-sub { font-size:12px; line-height:1.6; }
+
+  /* ─── OVERLAY & MODAL ─── */
+  .overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px);
+    display:flex; align-items:center; justify-content:center;
+    z-index:100; padding:20px; opacity:0; pointer-events:none; transition:opacity 0.2s;
+  }
+  .overlay.open { opacity:1; pointer-events:all; }
+  .modal {
+    background:var(--surface); border:1px solid var(--border2); border-radius:18px;
+    width:100%; max-width:520px; max-height:90vh; overflow-y:auto;
+    padding:28px; transform:translateY(12px); transition:transform 0.25s;
+  }
+  .overlay.open .modal { transform:translateY(0); }
+  .modal::-webkit-scrollbar { width:4px; }
+  .modal::-webkit-scrollbar-thumb { background:var(--border2); }
+
+  .modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; }
+  .modal-title { font-family:'Syne',sans-serif; font-weight:800; font-size:18px; }
+  .close-btn {
+    width:32px; height:32px; border-radius:8px; border:1px solid var(--border);
+    background:var(--surface2); color:var(--text2);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.15s;
+  }
+  .close-btn:hover { color:var(--text); border-color:var(--border2); }
+
+  .field { margin-bottom:16px; }
+  .field label { display:block; font-size:10px; letter-spacing:0.15em; text-transform:uppercase; color:var(--text3); margin-bottom:6px; }
+  .field input, .field textarea {
+    width:100%; background:var(--surface2); border:1px solid var(--border);
+    border-radius:10px; padding:11px 14px; color:var(--text);
+    font-family:'DM Mono',monospace; font-size:13px; outline:none; transition:border-color 0.2s; resize:none;
+  }
+  .field input:focus, .field textarea:focus { border-color:var(--accent2); }
+  .field input::placeholder, .field textarea::placeholder { color:var(--text3); }
+
+  /* Image upload */
+  .upload-zone {
+    width:100%; border:1.5px dashed var(--border2); border-radius:12px;
+    padding:20px; text-align:center; cursor:pointer;
+    transition:all 0.2s; position:relative; overflow:hidden; background:var(--surface2);
+  }
+  .upload-zone:hover, .upload-zone.dragover { border-color:var(--accent2); background:#c9a96e07; }
+  .upload-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; padding:0; border:none; background:none; }
+  .upload-preview { width:100%; height:160px; object-fit:cover; border-radius:8px; display:block; }
+  .upload-text { font-size:12px; color:var(--text2); margin-top:8px; }
+  .upload-sub { font-size:10px; color:var(--text3); margin-top:3px; }
+  .upload-remove {
+    display:inline-flex; align-items:center; gap:5px; margin-top:10px;
+    font-size:10px; color:var(--red); cursor:pointer; pointer-events:all;
+    background:none; border:none; font-family:'DM Mono',monospace;
+  }
+  .progress-bar-wrap { height:3px; background:var(--border); border-radius:2px; margin-top:10px; overflow:hidden; display:none; }
+  .progress-bar-wrap.active { display:block; }
+  .progress-bar { height:100%; background:var(--accent); border-radius:2px; width:0%; transition:width 0.3s; }
+
+  /* Cat grid */
+  .cat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .cat-option {
+    padding:9px 8px; border:1px solid var(--border); border-radius:9px; text-align:center;
+    cursor:pointer; font-size:11px; color:var(--text2);
+    display:flex; flex-direction:column; align-items:center; gap:5px;
+    transition:all 0.15s; background:var(--surface2);
+  }
+  .cat-option:hover { border-color:var(--border2); }
+  .cat-option.selected { border-color:var(--cat-color2); color:var(--cat-color2); background:var(--surface3); }
+  .cat-icon { width:28px; height:28px; border-radius:8px; background:var(--surface); display:flex; align-items:center; justify-content:center; color:var(--text3); transition:color 0.15s; }
+  .cat-option.selected .cat-icon { color:var(--cat-color2); }
+
+  .modal-actions { display:flex; gap:10px; margin-top:24px; }
+  .btn-save {
+    flex:1; padding:13px; background:var(--accent); color:#0a0a0a;
+    border:none; border-radius:10px; font-family:'Syne',sans-serif;
+    font-weight:700; font-size:12px; letter-spacing:0.1em; text-transform:uppercase;
+    cursor:pointer; transition:all 0.2s; display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .btn-save:hover { background:var(--accent2); }
+  .btn-save:disabled { opacity:0.5; cursor:not-allowed; }
+  .btn-cancel {
+    padding:13px 20px; background:var(--surface2); border:1px solid var(--border);
+    border-radius:10px; color:var(--text2); font-family:'DM Mono',monospace;
+    font-size:12px; cursor:pointer; transition:all 0.15s;
+  }
+  .btn-cancel:hover { color:var(--text); border-color:var(--border2); }
+
+  /* View modal */
+  .view-cover { width:calc(100% + 56px); margin:-28px -28px 24px; height:220px; object-fit:cover; border-radius:18px 18px 0 0; display:block; }
+  .view-modal-cat { font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:var(--cat-color-view); margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+  .view-modal-cat svg { opacity:0.9; }
+  .view-modal-title { font-family:'Instrument Serif',serif; font-size:28px; line-height:1.2; margin-bottom:20px; }
+  .section-label { font-size:9px; letter-spacing:0.2em; text-transform:uppercase; color:var(--text3); margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+  .section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+  .ingredients-list { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:20px; }
+  .ing-tag { padding:5px 11px; background:var(--surface2); border:1px solid var(--border); border-radius:20px; font-family:'Instrument Serif',serif; font-size:14px; color:var(--accent); font-style:italic; }
+  .steps-text { font-size:13px; line-height:1.8; color:var(--text2); white-space:pre-wrap; }
+
+  /* Toast */
+  .toast {
+    position:fixed; bottom:24px; right:24px; background:var(--surface2);
+    border:1px solid var(--border2); border-radius:10px; padding:12px 18px;
+    font-size:12px; color:var(--text); z-index:300;
+    transform:translateY(16px); opacity:0; pointer-events:none; transition:all 0.25s;
+    display:flex; align-items:center; gap:8px;
+  }
+  .toast.show { transform:translateY(0); opacity:1; }
+  .toast.success { border-color:#52c27a44; color:var(--green); }
+  .toast.error { border-color:#e0525244; color:var(--red); }
+
+  .sidebar::-webkit-scrollbar { width:3px; }
+  .sidebar::-webkit-scrollbar-thumb { background:var(--border); }
+</style>
+</head>
+<body>
+
+<!-- SETUP BANNER -->
+<div class="setup-banner" id="setupBanner">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+  <span style="white-space:nowrap">ใส่ Supabase credentials:</span>
+  <input id="inputUrl" placeholder="Project URL — https://xxxx.supabase.co">
+  <input id="inputKey" placeholder="Anon Key (public)">
+  <button class="btn-connect" onclick="connectSupabase()">Connect →</button>
+</div>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-text">MISE</div>
+      <div class="logo-sub">Recipe Notes</div>
+      <div class="db-badge" id="dbBadge"><span class="db-dot"></span><span id="dbStatus">ไม่ได้เชื่อมต่อ</span></div>
+    </div>
+    <div class="sidebar-section">
+      <button class="add-recipe-btn" onclick="openAdd()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Recipe
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Categories</div>
+      <button class="cat-btn active" onclick="filterCat('all',this)">
+        <span class="cat-dot" style="background:#888"></span>All
+        <span class="cat-count" id="count-all">0</span>
+      </button>
+    </div>
+    <div id="cat-list" class="sidebar-section" style="padding-top:0"></div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <div class="search-wrap">
+        <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="search-input" id="searchInput" placeholder="ค้นหาสูตร, วัตถุดิบ..." oninput="handleSearch()">
+      </div>
+      <button class="sort-btn" onclick="toggleSort()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        <span id="sortLabel">ล่าสุด</span>
+      </button>
+    </div>
+    <div class="content">
+      <div class="view-header">
+        <div class="view-title" id="viewTitle">ทั้งหมด</div>
+        <div class="view-count" id="viewCount">0 สูตร</div>
+      </div>
+      <div class="grid" id="grid"></div>
+    </div>
+  </main>
+</div>
+
+<!-- ADD / EDIT MODAL -->
+<div class="overlay" id="addOverlay" onclick="overlayClose(event,'addOverlay')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">+ สูตรใหม่</div>
+      <button class="close-btn" onclick="closeModal('addOverlay')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <!-- Image upload -->
+    <div class="field">
+      <label>รูปภาพ (ถ้ามี)</label>
+      <div class="upload-zone" id="uploadZone"
+           ondragover="onDragOver(event)" ondragleave="onDragLeave()" ondrop="onDrop(event)">
+        <input type="file" id="imgFile" accept="image/*" onchange="onFileChange(event)">
+        <div id="uploadContent">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text3)">
+            <rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+          </svg>
+          <div class="upload-text">คลิกหรือลากรูปมาวางตรงนี้</div>
+          <div class="upload-sub">JPG · PNG · WEBP — max 5MB</div>
+        </div>
+        <div class="progress-bar-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>ชื่อสูตร</label>
+      <input type="text" id="f-name" placeholder="เช่น ข้าวผัดกระเพรา">
+    </div>
+
+    <div class="field">
+      <label>ประเภท</label>
+      <div class="cat-grid" id="catGrid"></div>
+    </div>
+
+    <div class="field">
+      <label>วัตถุดิบ (คั่นด้วยจุลภาค)</label>
+      <textarea id="f-ing" rows="3" placeholder="หมู, กระเทียม, พริก, ใบกะเพรา, ซีอิ๊ว..."></textarea>
+    </div>
+
+    <div class="field">
+      <label>วิธีทำ (คร่าวๆ)</label>
+      <textarea id="f-steps" rows="4" placeholder="1. ผัดกระเทียมพริก&#10;2. ใส่หมูผัดจนสุก&#10;3. ปรุงรส ใส่ใบกะเพรา..."></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('addOverlay')">ยกเลิก</button>
+      <button class="btn-save" id="btnSave" onclick="saveRecipe()">
+        <span id="btnSaveText">บันทึกสูตร</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW MODAL -->
+<div class="overlay" id="viewOverlay" onclick="overlayClose(event,'viewOverlay')">
+  <div class="modal">
+    <div class="modal-header" style="margin-bottom:0">
+      <div></div>
+      <button class="close-btn" onclick="closeModal('viewOverlay')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="viewContent"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════
+const BUCKET = 'recipe-images';
+
+const ICONS = {
+  thai:    `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8 2 4 5 4 9h16c0-4-4-7-8-7z"/><path d="M4 9c0 5 3.5 9 8 9s8-4 8-9"/><path d="M9 13h6"/></svg>`,
+  asian:   `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21a9 9 0 009-9H3a9 9 0 009 9z"/><path d="M3 12h18"/><path d="M9 3l-1 4"/><path d="M15 3l-1 4"/></svg>`,
+  western: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 00-5 5v6h3v7"/></svg>`,
+  dessert: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c-3 0-5 2-5 4.5C7 9 9 11 12 13c3-2 5-4 5-6.5C17 4 15 2 12 2z"/><path d="M12 13v9"/><path d="M9 19h6"/></svg>`,
+  drinks:  `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a4 4 0 010 8h-1"/><path d="M3 8h14v9a4 4 0 01-4 4H7a4 4 0 01-4-4V8z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg>`,
+  other:   `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`,
+};
+
+const CATEGORIES = [
+  { id:'thai',    label:'อาหารไทย',    color:'#e09852' },
+  { id:'asian',   label:'อาหารเอเชีย', color:'#52c27a' },
+  { id:'western', label:'อาหารฝรั่ง',  color:'#5298e0' },
+  { id:'dessert', label:'ขนม/ของหวาน', color:'#e07898' },
+  { id:'drinks',  label:'เครื่องดื่ม',  color:'#52c2b8' },
+  { id:'other',   label:'อื่นๆ',        color:'#9a7fe0' },
+];
+const CAT_MAP = {};
+CATEGORIES.forEach(c => CAT_MAP[c.id] = c);
+
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
+let sb = null;
+let recipes = [];
+let currentCat = 'all';
+let searchQ = '';
+let sortMode = 'newest';
+let editId = null;
+let selectedCat = 'thai';
+let pendingFile = null;
+let existingImageUrl = null;
+
+// ═══════════════════════════════════════════
+//  SUPABASE
+// ═══════════════════════════════════════════
+async function connectSupabase() {
+  const url = document.getElementById('inputUrl').value.trim();
+  const key = document.getElementById('inputKey').value.trim();
+  if (!url || !key) { showToast('ใส่ URL และ Key ก่อนนะ', 'error'); return; }
+  try {
+    sb = window.supabase.createClient(url, key);
+    // quick ping
+    const { error } = await sb.from('recipes').select('id').limit(1);
+    if (error) throw error;
+    document.getElementById('setupBanner').classList.add('hidden');
+    document.getElementById('dbBadge').classList.add('connected');
+    document.getElementById('dbStatus').textContent = 'Supabase';
+    localStorage.setItem('mise_url', url);
+    localStorage.setItem('mise_key', key);
+    showToast('เชื่อมต่อสำเร็จ! 🎉', 'success');
+    await loadRecipes();
+  } catch(e) {
+    showToast('เชื่อมต่อไม่ได้ — ' + (e.message||'ลองเช็ค URL/Key'), 'error');
+  }
+}
+
+async function tryAutoConnect() {
+  const url = localStorage.getItem('mise_url');
+  const key = localStorage.getItem('mise_key');
+  if (!url || !key) return;
+  document.getElementById('inputUrl').value = url;
+  document.getElementById('inputKey').value = key;
+  await connectSupabase();
+}
+
+// ═══════════════════════════════════════════
+//  DB OPERATIONS
+// ═══════════════════════════════════════════
+async function loadRecipes() {
+  showSkeletons();
+  const { data, error } = await sb.from('recipes').select('*').order('created_at', { ascending:false });
+  if (error) { showToast('โหลดไม่ได้: ' + error.message, 'error'); return; }
+  recipes = (data||[]).map(r => ({
+    id: r.id, name: r.name, cat: r.cat,
+    ingredients: r.ingredients||'', steps: r.steps||'',
+    image_url: r.image_url||null,
+    ts: new Date(r.created_at).getTime(),
+  }));
+  render();
+}
+
+async function uploadImage(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  setProgress(30);
+  const { error } = await sb.storage.from(BUCKET).upload(path, file);
+  if (error) throw error;
+  setProgress(90);
+  const { data } = sb.storage.from(BUCKET).getPublicUrl(path);
+  setProgress(100);
+  setTimeout(() => setProgress(0), 800);
+  return data.publicUrl;
+}
+
+async function removeImageFromStorage(url) {
+  if (!url || !sb) return;
+  const path = url.split(`/${BUCKET}/`)[1];
+  if (path) await sb.storage.from(BUCKET).remove([path]);
+}
+
+// ═══════════════════════════════════════════
+//  SAVE / DELETE
+// ═══════════════════════════════════════════
+async function saveRecipe() {
+  if (!sb) { showToast('ยังไม่ได้เชื่อมต่อ Supabase', 'error'); return; }
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { document.getElementById('f-name').focus(); return; }
+
+  const btn = document.getElementById('btnSave');
+  const txt = document.getElementById('btnSaveText');
+  btn.disabled = true; txt.textContent = 'กำลังบันทึก...';
+
+  try {
+    let image_url = existingImageUrl || null;
+    if (pendingFile) image_url = await uploadImage(pendingFile);
+
+    const payload = {
+      name,
+      cat: selectedCat,
+      ingredients: document.getElementById('f-ing').value.trim(),
+      steps: document.getElementById('f-steps').value.trim(),
+      image_url,
+    };
+
+    if (editId) {
+      const { error } = await sb.from('recipes').update(payload).eq('id', editId);
+      if (error) throw error;
+      showToast('อัปเดตสูตรแล้ว ✓', 'success');
+    } else {
+      const { error } = await sb.from('recipes').insert([payload]);
+      if (error) throw error;
+      showToast('บันทึกสูตรแล้ว ✓', 'success');
+    }
+    closeModal('addOverlay');
+    await loadRecipes();
+  } catch(e) {
+    showToast('บันทึกไม่ได้: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; txt.textContent = 'บันทึกสูตร';
+  }
+}
+
+async function deleteRecipe(id) {
+  if (!confirm('ลบสูตรนี้?')) return;
+  const r = recipes.find(x => x.id === id);
+  try {
+    if (r?.image_url) await removeImageFromStorage(r.image_url);
+    const { error } = await sb.from('recipes').delete().eq('id', id);
+    if (error) throw error;
+    showToast('ลบสูตรแล้ว', 'success');
+    await loadRecipes();
+  } catch(e) { showToast('ลบไม่ได้: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════
+//  IMAGE UPLOAD UI
+// ═══════════════════════════════════════════
+function onFileChange(e) { const f = e.target.files[0]; if (f) previewFile(f); }
+function onDragOver(e) { e.preventDefault(); document.getElementById('uploadZone').classList.add('dragover'); }
+function onDragLeave() { document.getElementById('uploadZone').classList.remove('dragover'); }
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('image/')) previewFile(f);
+}
+
+function previewFile(file) {
+  pendingFile = file;
+  const r = new FileReader();
+  r.onload = ev => showPreview(ev.target.result);
+  r.readAsDataURL(file);
+}
+
+function showPreview(src) {
+  document.getElementById('uploadContent').innerHTML = `
+    <img src="${src}" class="upload-preview" alt="preview">
+    <button class="upload-remove" onclick="clearImage(event)">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      ลบรูป
+    </button>`;
+}
+
+function clearImage(e) {
+  if (e) e.stopPropagation();
+  pendingFile = null; existingImageUrl = null;
+  document.getElementById('imgFile').value = '';
+  document.getElementById('uploadContent').innerHTML = `
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text3)">
+      <rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+    </svg>
+    <div class="upload-text">คลิกหรือลากรูปมาวางตรงนี้</div>
+    <div class="upload-sub">JPG · PNG · WEBP — max 5MB</div>`;
+}
+
+function setProgress(pct) {
+  const w = document.getElementById('progressWrap');
+  const b = document.getElementById('progressBar');
+  w.classList.toggle('active', pct > 0);
+  b.style.width = pct + '%';
+}
+
+// ═══════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════
+function formatDate(ts) { return new Date(ts).toLocaleDateString('th-TH', { day:'numeric', month:'short' }); }
+
+function getFiltered() {
+  let r = [...recipes];
+  if (currentCat !== 'all') r = r.filter(x => x.cat === currentCat);
+  if (searchQ) {
+    const q = searchQ.toLowerCase();
+    r = r.filter(x => x.name.toLowerCase().includes(q) || x.ingredients.toLowerCase().includes(q) || x.steps.toLowerCase().includes(q));
+  }
+  if (sortMode === 'newest') r.sort((a,b) => b.ts-a.ts);
+  else if (sortMode === 'oldest') r.sort((a,b) => a.ts-b.ts);
+  else r.sort((a,b) => a.name.localeCompare(b.name,'th'));
+  return r;
+}
+
+function render() { renderSidebar(); renderGrid(); }
+
+function renderSidebar() {
+  document.getElementById('count-all').textContent = recipes.length;
+  let html = '';
+  CATEGORIES.forEach(c => {
+    const cnt = recipes.filter(r => r.cat === c.id).length;
+    if (!cnt) return;
+    const active = currentCat === c.id ? 'active' : '';
+    html += `<button class="cat-btn ${active}" onclick="filterCat('${c.id}',this)">
+      <span class="cat-dot" style="background:${c.color}"></span>${c.label}
+      <span class="cat-count">${cnt}</span></button>`;
+  });
+  document.getElementById('cat-list').innerHTML = html;
+}
+
+function showSkeletons() {
+  document.getElementById('grid').innerHTML = Array(4).fill(0).map(() => `
+    <div class="skeleton"><div class="sk-img"></div>
+      <div class="sk-body">
+        <div class="sk-line" style="width:55%"></div>
+        <div class="sk-line" style="width:85%"></div>
+        <div class="sk-line" style="width:38%"></div>
+      </div></div>`).join('');
+}
+
+function renderGrid() {
+  const filtered = getFiltered();
+  const grid = document.getElementById('grid');
+  const catInfo = currentCat === 'all' ? null : CAT_MAP[currentCat];
+  document.getElementById('viewTitle').textContent = catInfo ? catInfo.label : 'ทั้งหมด';
+  document.getElementById('viewCount').textContent = filtered.length + ' สูตร';
+
+  if (!filtered.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1"><div class="empty">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+      <div class="empty-title">ยังไม่มีสูตร</div>
+      <div class="empty-sub">${searchQ ? 'ไม่พบสูตรที่ค้นหา' : 'กด + New Recipe เพื่อเพิ่มสูตรใหม่'}</div>
+    </div></div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(r => {
+    const cat = CAT_MAP[r.cat] || CAT_MAP.other;
+    const ings = r.ingredients.split(',').map(s => s.trim()).filter(Boolean);
+    const ingPreview = ings.slice(0,5).map(i=>`<span>${i}</span>`).join(', ');
+    const more = ings.length > 5 ? ` <span style="color:var(--text3)">+${ings.length-5}</span>` : '';
+    return `<div class="card" onclick="viewRecipe('${r.id}')">
+      <div class="card-top-bar" style="--cat-color:${cat.color}"></div>
+      <div class="card-body">
+        <div class="card-top">
+          <div class="card-title">${r.name}</div>
+          <div class="card-cat" style="--cat-color:${cat.color}">${ICONS[r.cat]||''} ${cat.label}</div>
+        </div>
+        <div class="card-ingredients">${ingPreview}${more}</div>
+        <div class="card-footer">
+          <div class="card-date">${formatDate(r.ts)}</div>
+          <div class="card-actions" onclick="event.stopPropagation()">
+            <div class="icon-btn" onclick="editRecipe('${r.id}')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </div>
+            <div class="icon-btn del" onclick="deleteRecipe('${r.id}')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderCatGrid(sel) {
+  document.getElementById('catGrid').innerHTML = CATEGORIES.map(c => `
+    <div class="cat-option ${sel===c.id?'selected':''}" style="--cat-color2:${c.color}" onclick="selectCat('${c.id}')">
+      <div class="cat-icon">${ICONS[c.id]}</div><span>${c.label}</span>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════
+//  MODAL CONTROLS
+// ═══════════════════════════════════════════
+function openAdd() {
+  editId = null; selectedCat = 'thai'; existingImageUrl = null; pendingFile = null;
+  document.getElementById('modalTitle').textContent = '+ สูตรใหม่';
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-ing').value = '';
+  document.getElementById('f-steps').value = '';
+  clearImage();
+  renderCatGrid('thai');
+  document.getElementById('addOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('f-name').focus(), 120);
+}
+
+function editRecipe(id) {
+  const r = recipes.find(x => x.id === id);
+  if (!r) return;
+  editId = id; selectedCat = r.cat; existingImageUrl = r.image_url || null; pendingFile = null;
+  document.getElementById('modalTitle').textContent = 'แก้ไขสูตร';
+  document.getElementById('f-name').value = r.name;
+  document.getElementById('f-ing').value = r.ingredients;
+  document.getElementById('f-steps').value = r.steps;
+  if (r.image_url) showPreview(r.image_url); else clearImage();
+  renderCatGrid(r.cat);
+  document.getElementById('addOverlay').classList.add('open');
+}
+
+function viewRecipe(id) {
+  const r = recipes.find(x => x.id === id);
+  if (!r) return;
+  const cat = CAT_MAP[r.cat] || CAT_MAP.other;
+  const ings = r.ingredients.split(',').map(s => s.trim()).filter(Boolean);
+  document.getElementById('viewContent').innerHTML = `
+    ${r.image_url ? `<img src="${r.image_url}" class="view-cover" alt="${r.name}">` : '<div style="height:16px"></div>'}
+    <div style="--cat-color-view:${cat.color}">
+      <div class="view-modal-cat">
+        <span style="width:8px;height:8px;border-radius:50%;background:${cat.color};display:inline-block"></span>
+        ${ICONS[r.cat]||''} ${cat.label}
+        <span style="margin-left:auto;font-size:10px;color:var(--text3)">${formatDate(r.ts)}</span>
+      </div>
+      <div class="view-modal-title">${r.name}</div>
+      ${ings.length ? `<div class="section-label">วัตถุดิบ</div><div class="ingredients-list">${ings.map(i=>`<div class="ing-tag">${i}</div>`).join('')}</div>` : ''}
+      ${r.steps ? `<div class="section-label">วิธีทำ</div><div class="steps-text">${r.steps}</div>` : ''}
+      <div style="display:flex;gap:8px;margin-top:24px">
+        <button class="btn-save" onclick="closeModal('viewOverlay');editRecipe('${r.id}')">แก้ไข</button>
+        <button class="btn-cancel" onclick="closeModal('viewOverlay')">ปิด</button>
+      </div>
+    </div>`;
+  document.getElementById('viewOverlay').classList.add('open');
+}
+
+function selectCat(id) { selectedCat = id; renderCatGrid(id); }
+function filterCat(cat, btn) {
+  currentCat = cat;
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderGrid();
+}
+function handleSearch() { searchQ = document.getElementById('searchInput').value; renderGrid(); }
+function toggleSort() {
+  const modes = ['newest','oldest','alpha'];
+  const labels = { newest:'ล่าสุด', oldest:'เก่าสุด', alpha:'A-Z' };
+  sortMode = modes[(modes.indexOf(sortMode)+1) % modes.length];
+  document.getElementById('sortLabel').textContent = labels[sortMode];
+  renderGrid();
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function overlayClose(e, id) { if (e.target.id === id) closeModal(id); }
+
+// ═══════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════
+let toastT;
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show ' + type;
+  clearTimeout(toastT);
+  toastT = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+// ═══════════════════════════════════════════
+//  KEYBOARD
+// ═══════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeModal('viewOverlay'); closeModal('addOverlay'); }
+  if ((e.metaKey||e.ctrlKey) && e.key === 'k') { e.preventDefault(); document.getElementById('searchInput').focus(); }
+});
+
+// ═══════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════
+render();
+tryAutoConnect();
+</script>
+</body>
+</html>
