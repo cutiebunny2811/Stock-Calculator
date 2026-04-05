@@ -2,6 +2,11 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MISE">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="apple-touch-icon" id="appIcon">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MISE — Recipe Notes</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -796,5 +801,134 @@ document.addEventListener('keydown', e => {
 render();
 tryAutoConnect();
 </script>
+
+<script>
+// Generate apple-touch-icon via canvas
+(function() {
+  const size = 512;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+
+  // Background
+  ctx.fillStyle = '#0f0f0f';
+  ctx.fillRect(0, 0, size, size);
+
+  // Subtle gradient overlay
+  const grad = ctx.createRadialGradient(size*0.35, size*0.3, 0, size*0.5, size*0.5, size*0.7);
+  grad.addColorStop(0, 'rgba(232,213,176,0.07)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, size, size);
+
+  // Draw notepad/recipe card shape
+  const pad = 96, r = 40;
+  const x = pad, y = pad + 20, w = size - pad*2, h = size - pad*2 - 20;
+
+  // Card shadow
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 40;
+  ctx.shadowOffsetY = 10;
+
+  // Card body
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fill();
+  ctx.shadowColor = 'transparent';
+
+  // Top accent bar
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + 18);
+  ctx.lineTo(x, y + 18);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+  ctx.fillStyle = '#e8d5b0';
+  ctx.fill();
+
+  // Ring holes (spiral binding effect)
+  const holeY = y + 9;
+  const holes = [x + w*0.28, x + w*0.5, x + w*0.72];
+  holes.forEach(hx => {
+    ctx.beginPath();
+    ctx.arc(hx, holeY, 7, 0, Math.PI*2);
+    ctx.fillStyle = '#0f0f0f';
+    ctx.fill();
+  });
+
+  // Lines on the notepad
+  ctx.shadowColor = 'transparent';
+  const lineColor = '#2e2e2e';
+  const lineStart = x + 36;
+  const lineEnd = x + w - 36;
+  const lineStartY = y + 58;
+  const lineGap = 38;
+  const lineCount = 5;
+  for (let i = 0; i < lineCount; i++) {
+    const ly = lineStartY + i * lineGap;
+    ctx.beginPath();
+    ctx.moveTo(lineStart, ly);
+    ctx.lineTo(lineEnd, ly);
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  }
+
+  // Gold accent line (first line highlighted)
+  ctx.beginPath();
+  ctx.moveTo(lineStart, lineStartY);
+  ctx.lineTo(lineEnd * 0.55 + lineStart * 0.45, lineStartY);
+  ctx.strokeStyle = '#e8d5b0';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // Small fork+knife icon at bottom right
+  ctx.strokeStyle = '#e8d5b0';
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  const ix = x + w - 72;
+  const iy = y + h - 80;
+
+  // Fork left prongs
+  ctx.beginPath(); ctx.moveTo(ix - 10, iy); ctx.lineTo(ix - 10, iy + 28); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ix - 3, iy); ctx.lineTo(ix - 3, iy + 28); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ix + 4, iy); ctx.lineTo(ix + 4, iy + 28); ctx.stroke();
+  // Fork base curve
+  ctx.beginPath();
+  ctx.moveTo(ix - 10, iy + 28);
+  ctx.bezierCurveTo(ix - 10, iy + 40, ix + 4, iy + 40, ix + 4, iy + 28);
+  ctx.stroke();
+  // Fork handle
+  ctx.beginPath(); ctx.moveTo(ix - 3, iy + 40); ctx.lineTo(ix - 3, iy + 62); ctx.stroke();
+
+  // Knife
+  const kx = ix + 22;
+  ctx.beginPath();
+  ctx.moveTo(kx, iy);
+  ctx.lineTo(kx + 6, iy + 20);
+  ctx.lineTo(kx, iy + 24);
+  ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(kx, iy + 24); ctx.lineTo(kx, iy + 62); ctx.stroke();
+
+  // Set as icon
+  document.getElementById('appIcon').href = c.toDataURL('image/png');
+})();
+</script>
+
 </body>
 </html>
