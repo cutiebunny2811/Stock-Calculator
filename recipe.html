@@ -450,7 +450,7 @@ async function connectSupabase() {
   try {
     sb = window.supabase.createClient(url, key);
     // quick ping
-    const { error } = await sb.from('recipes').select('id').limit(1);
+    const { error } = await sb.from('mise_recipes').select('id').limit(1);
     if (error) throw error;
     document.getElementById('setupBanner').classList.add('hidden');
     document.getElementById('dbBadge').classList.add('connected');
@@ -478,7 +478,7 @@ async function tryAutoConnect() {
 // ═══════════════════════════════════════════
 async function loadRecipes() {
   showSkeletons();
-  const { data, error } = await sb.from('recipes').select('*').order('created_at', { ascending:false });
+  const { data, error } = await sb.from('mise_recipes').select('*').order('created_at', { ascending:false });
   if (error) { showToast('โหลดไม่ได้: ' + error.message, 'error'); return; }
   recipes = (data||[]).map(r => ({
     id: r.id, name: r.name, cat: r.cat,
@@ -533,11 +533,11 @@ async function saveRecipe() {
     };
 
     if (editId) {
-      const { error } = await sb.from('recipes').update(payload).eq('id', editId);
+      const { error } = await sb.from('mise_recipes').update(payload).eq('id', editId);
       if (error) throw error;
       showToast('อัปเดตสูตรแล้ว ✓', 'success');
     } else {
-      const { error } = await sb.from('recipes').insert([payload]);
+      const { error } = await sb.from('mise_recipes').insert([payload]);
       if (error) throw error;
       showToast('บันทึกสูตรแล้ว ✓', 'success');
     }
@@ -555,7 +555,7 @@ async function deleteRecipe(id) {
   const r = recipes.find(x => x.id === id);
   try {
     if (r?.image_url) await removeImageFromStorage(r.image_url);
-    const { error } = await sb.from('recipes').delete().eq('id', id);
+    const { error } = await sb.from('mise_recipes').delete().eq('id', id);
     if (error) throw error;
     showToast('ลบสูตรแล้ว', 'success');
     await loadRecipes();
