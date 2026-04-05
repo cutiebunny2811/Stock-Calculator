@@ -271,6 +271,110 @@
 
   .sidebar::-webkit-scrollbar { width:3px; }
   .sidebar::-webkit-scrollbar-thumb { background:var(--border); }
+  /* ════════════════════════════════
+     MOBILE RESPONSIVE  (≤ 640px)
+     ════════════════════════════════ */
+  @media (max-width: 640px) {
+    body { overflow:auto; }
+
+    /* Setup banner: stack vertically */
+    .setup-banner { flex-direction:column; align-items:stretch; gap:8px; padding:12px 16px; }
+    .setup-banner input { min-width:unset; width:100%; font-size:13px; padding:9px 12px; }
+    .btn-connect { padding:11px; font-size:12px; }
+
+    /* Hide desktop sidebar */
+    .app { flex-direction:column; overflow:visible; }
+    .sidebar { display:none; }
+
+    /* Mobile header */
+    .mobile-header {
+      display:flex !important;
+      align-items:center;
+      padding:14px 16px 10px;
+      background:var(--surface);
+      border-bottom:1px solid var(--border);
+      gap:10px;
+    }
+    .mobile-logo { font-family:'Syne',sans-serif; font-weight:800; font-size:20px; letter-spacing:0.12em; color:var(--accent); flex:1; }
+    .mobile-db-badge {
+      display:inline-flex; align-items:center; gap:5px;
+      padding:4px 10px; border-radius:20px; font-size:9px; letter-spacing:0.1em;
+      background:var(--surface3); color:var(--text3); border:1px solid var(--border);
+    }
+    .mobile-db-badge.connected { color:var(--green); border-color:#52c27a33; background:#52c27a0d; }
+
+    /* Category chips */
+    .mobile-chips {
+      display:flex !important;
+      gap:8px; padding:10px 16px;
+      overflow-x:auto; background:var(--surface);
+      border-bottom:1px solid var(--border);
+      -webkit-overflow-scrolling:touch;
+    }
+    .mobile-chips::-webkit-scrollbar { display:none; }
+    .chip {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:7px 13px; border-radius:20px; white-space:nowrap;
+      font-family:'DM Mono',monospace; font-size:11px;
+      border:1px solid var(--border); background:var(--surface2);
+      color:var(--text2); cursor:pointer; transition:all 0.15s; flex-shrink:0;
+    }
+    .chip.active { background:var(--surface3); color:var(--text); border-color:var(--border2); }
+    .chip-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+
+    /* Main area */
+    .main { overflow:visible; }
+    .topbar { padding:12px 16px; gap:10px; }
+    .search-input { font-size:16px; } /* prevent iOS zoom */
+    .sort-btn { padding:9px 12px; font-size:10px; }
+
+    .content { padding:14px 16px 100px; overflow:visible; }
+    .view-header { margin-bottom:14px; }
+    .view-title { font-size:18px; }
+
+    /* Grid: 1 col, or 2 col if space allows */
+    .grid { grid-template-columns:1fr; gap:12px; }
+
+    /* Cards: always show actions on mobile */
+    .card-actions { opacity:1 !important; }
+    .card:hover { transform:none; }
+
+    /* FAB */
+    .fab {
+      display:flex !important;
+      position:fixed; bottom:28px; right:20px;
+      width:56px; height:56px; border-radius:50%;
+      background:var(--accent); color:#0a0a0a;
+      border:none; cursor:pointer; z-index:50;
+      align-items:center; justify-content:center;
+      box-shadow:0 4px 20px rgba(232,213,176,0.25);
+      transition:all 0.2s;
+    }
+    .fab:active { transform:scale(0.94); background:var(--accent2); }
+
+    /* Modal: slide up from bottom */
+    .overlay { align-items:flex-end; padding:0; }
+    .modal {
+      border-radius:20px 20px 0 0;
+      max-height:92vh; padding:20px 20px 40px;
+      transform:translateY(100%);
+    }
+    .overlay.open .modal { transform:translateY(0); }
+
+    /* View modal cover adjust */
+    .view-cover { width:calc(100% + 40px); margin:-20px -20px 20px; height:200px; }
+
+    /* Toast: top on mobile */
+    .toast { bottom:auto; top:20px; left:16px; right:16px; width:auto; justify-content:center; }
+  }
+
+  /* Desktop only */
+  @media (min-width: 641px) {
+    .mobile-header { display:none; }
+    .mobile-chips { display:none; }
+    .fab { display:none; }
+  }
+
 </style>
 </head>
 <body>
@@ -283,6 +387,24 @@
   <input id="inputKey" placeholder="Anon Key (public)">
   <button class="btn-connect" onclick="connectSupabase()">Connect →</button>
 </div>
+
+<!-- MOBILE HEADER -->
+<div class="mobile-header" style="display:none">
+  <div class="mobile-logo">MISE</div>
+  <div class="mobile-db-badge" id="mobileDbBadge"><span class="db-dot"></span><span id="mobileDbStatus">ไม่ได้เชื่อมต่อ</span></div>
+</div>
+
+<!-- MOBILE CATEGORY CHIPS -->
+<div class="mobile-chips" style="display:none" id="mobileChips">
+  <div class="chip active" data-cat="all" onclick="filterCatMobile('all', this)">
+    <span class="chip-dot" style="background:#888"></span>ทั้งหมด
+  </div>
+</div>
+
+<!-- FAB -->
+<button class="fab" style="display:none" onclick="openAdd()">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+</button>
 
 <div class="app">
   <!-- SIDEBAR -->
@@ -457,7 +579,7 @@ async function connectSupabase() {
     document.getElementById('dbStatus').textContent = 'Supabase';
     localStorage.setItem('mise_url', url);
     localStorage.setItem('mise_key', key);
-    showToast('เชื่อมต่อสำเร็จ! 🎉', 'success');
+    showToast('เชื่อมต่อสำเร็จ! 🎉', 'success'); syncMobileDb(true);
     await loadRecipes();
   } catch(e) {
     showToast('เชื่อมต่อไม่ได้ — ' + (e.message||'ลองเช็ค URL/Key'), 'error');
@@ -628,7 +750,7 @@ function getFiltered() {
   return r;
 }
 
-function render() { renderSidebar(); renderGrid(); }
+function render() { renderSidebar(); renderGrid(); renderMobileChips(); }
 
 function renderSidebar() {
   document.getElementById('count-all').textContent = recipes.length;
@@ -798,6 +920,43 @@ document.addEventListener('keydown', e => {
 // ═══════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════
+
+function renderMobileChips() {
+  const chips = document.getElementById('mobileChips');
+  if (!chips) return;
+  let html = `<div class="chip ${currentCat==='all'?'active':''}" data-cat="all" onclick="filterCatMobile('all',this)">
+    <span class="chip-dot" style="background:#888"></span>ทั้งหมด
+  </div>`;
+  CATEGORIES.forEach(c => {
+    const cnt = recipes.filter(r => r.cat === c.id).length;
+    if (!cnt) return;
+    html += `<div class="chip ${currentCat===c.id?'active':''}" data-cat="${c.id}" onclick="filterCatMobile('${c.id}',this)">
+      <span class="chip-dot" style="background:${c.color}"></span>${c.label}
+    </div>`;
+  });
+  chips.innerHTML = html;
+}
+
+function filterCatMobile(cat, el) {
+  currentCat = cat;
+  // update desktop sidebar too
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+  const match = document.querySelector(`.cat-btn[data-cat="${cat}"]`);
+  if (match) match.classList.add('active');
+  // update chips
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderGrid();
+}
+
+function syncMobileDb(connected) {
+  const badge = document.getElementById('mobileDbBadge');
+  const status = document.getElementById('mobileDbStatus');
+  if (!badge) return;
+  if (connected) { badge.classList.add('connected'); status.textContent = 'Supabase'; }
+  else { badge.classList.remove('connected'); status.textContent = 'ไม่ได้เชื่อมต่อ'; }
+}
+
 render();
 tryAutoConnect();
 </script>
