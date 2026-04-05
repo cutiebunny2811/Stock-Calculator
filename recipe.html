@@ -146,6 +146,7 @@
     width:28px; height:28px; border-radius:7px; border:1px solid var(--border);
     background:var(--surface3); color:var(--text2);
     display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.15s;
+    padding:0; font:inherit; -webkit-appearance:none; appearance:none;
   }
   .icon-btn:hover { color:var(--text); border-color:var(--border2); }
   .icon-btn.del:hover { color:var(--red); border-color:var(--red); }
@@ -248,6 +249,9 @@
 
   /* View modal */
   .view-cover { width:calc(100% + 56px); margin:-28px -28px 24px; height:220px; object-fit:cover; border-radius:18px 18px 0 0; display:block; }
+  @media (max-width: 640px) {
+    .view-cover { width:calc(100% + 40px); margin:-20px -20px 20px; height:200px; }
+  }
   .view-modal-cat { font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:var(--cat-color-view); margin-bottom:8px; display:flex; align-items:center; gap:8px; }
   .view-modal-cat svg { opacity:0.9; }
   .view-modal-title { font-family:'Instrument Serif',serif; font-size:28px; line-height:1.2; margin-bottom:20px; }
@@ -360,9 +364,6 @@
       transform:translateY(100%);
     }
     .overlay.open .modal { transform:translateY(0); }
-
-    /* View modal cover adjust */
-    .view-cover { width:calc(100% + 40px); margin:-20px -20px 20px; height:200px; }
 
     /* Toast: top on mobile */
     .toast { bottom:auto; top:20px; left:16px; right:16px; width:auto; justify-content:center; }
@@ -797,7 +798,7 @@ function renderGrid() {
     const ings = r.ingredients.split(',').map(s => s.trim()).filter(Boolean);
     const ingPreview = ings.slice(0,5).map(i=>`<span>${i}</span>`).join(', ');
     const more = ings.length > 5 ? ` <span style="color:var(--text3)">+${ings.length-5}</span>` : '';
-    return `<div class="card" onclick="viewRecipe('${r.id}')">
+    return `<div class="card" data-id="${r.id}">
       <div class="card-top-bar" style="--cat-color:${cat.color}"></div>
       <div class="card-body">
         <div class="card-top">
@@ -807,13 +808,13 @@ function renderGrid() {
         <div class="card-ingredients">${ingPreview}${more}</div>
         <div class="card-footer">
           <div class="card-date">${formatDate(r.ts)}</div>
-          <div class="card-actions" onclick="event.stopPropagation()">
-            <div class="icon-btn" onclick="editRecipe('${r.id}')">
+          <div class="card-actions">
+            <button class="icon-btn" data-action="edit" data-id="${r.id}" type="button">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            </div>
-            <div class="icon-btn del" onclick="deleteRecipe('${r.id}')">
+            </button>
+            <button class="icon-btn del" data-action="delete" data-id="${r.id}" type="button">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-            </div>
+            </button>
           </div>
         </div>
       </div>
@@ -959,6 +960,20 @@ function syncMobileDb(connected) {
 
 render();
 tryAutoConnect();
+
+// ── Event delegation for card clicks ──
+document.getElementById('grid').addEventListener('click', function(e) {
+  // Edit button
+  const editBtn = e.target.closest('[data-action="edit"]');
+  if (editBtn) { e.stopPropagation(); editRecipe(editBtn.dataset.id); return; }
+  // Delete button
+  const delBtn = e.target.closest('[data-action="delete"]');
+  if (delBtn) { e.stopPropagation(); deleteRecipe(delBtn.dataset.id); return; }
+  // Card click → view
+  const card = e.target.closest('.card[data-id]');
+  if (card) { viewRecipe(card.dataset.id); }
+});
+
 </script>
 
 <script>
