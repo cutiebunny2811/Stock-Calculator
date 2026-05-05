@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>VAULT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0a0a; --bg2:#111; --bg3:#181818;
+    --border:#1e1e1e; --border2:#272727;
+    --accent:#c9a84c; --accent-bg:rgba(201,168,76,.09);
+    --text:#ede9df; --text2:#7a7670; --text3:#3e3c38;
+    --danger:#d95f5f; --green:#4caf7d;
+    --safe-top:env(safe-area-inset-top,0px);
+    --safe-bot:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;overscroll-behavior:none;-webkit-text-size-adjust:100%}
+
+  /* ── SETUP SCREEN ── */
+  .setup-screen{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;padding:32px 24px;padding-top:calc(40px + var(--safe-top))}
+  .setup-screen.show{display:flex}
+  .setup-logo{width:60px;height:60px;background:var(--accent);border-radius:18px;display:flex;align-items:center;justify-content:center;margin-bottom:22px;flex-shrink:0}
+  .setup-title{font-size:24px;font-weight:700;margin-bottom:6px}
+  .setup-sub{font-size:13px;color:var(--text2);text-align:center;line-height:1.6;margin-bottom:32px;max-width:320px}
+  .setup-card{width:100%;max-width:380px;background:var(--bg2);border:1px solid var(--border2);border-radius:18px;padding:22px 20px;display:flex;flex-direction:column;gap:14px}
+  .setup-hint{font-size:11px;color:var(--text3);line-height:1.7;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'DM Mono',monospace}
+  .setup-hint b{color:var(--accent);font-weight:500}
+
+  /* ── HEADER ── */
+  .header{position:sticky;top:0;z-index:100;background:rgba(10,10,10,.95);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);border-bottom:1px solid var(--border);padding:12px 16px;padding-top:calc(12px + var(--safe-top))}
+  .header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .logo-wrap{display:flex;align-items:center;gap:9px}
+  .logo-icon{width:28px;height:28px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .logo-text{font-family:'DM Mono',monospace;font-size:12px;letter-spacing:3px;color:var(--text);text-transform:uppercase}
+  .logo-text span{color:var(--text3)}
+  .hdr-right{display:flex;gap:8px;align-items:center}
+  .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0;transition:background .4s}
+  .sync-dot.ok{background:var(--green)}
+  .sync-dot.syncing{background:var(--accent);animation:blink .7s infinite}
+  .sync-dot.err{background:var(--danger)}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+  .icon-btn{width:32px;height:32px;border:1px solid var(--border2);border-radius:8px;background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+  .icon-btn:active{background:var(--border2)}
+  .btn-add{width:34px;height:34px;background:var(--accent);border:none;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s,opacity .15s;flex-shrink:0}
+  .btn-add:active{transform:scale(.87);opacity:.8}
+
+  /* ── SEARCH ── */
+  .search-wrap{position:relative}
+  .search-ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;opacity:.28}
+  .search-input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:11px;color:var(--text);font-family:'Sora',sans-serif;font-size:14px;padding:10px 36px 10px 38px;outline:none;transition:border-color .2s}
+  .search-input::placeholder{color:var(--text3)}
+  .search-input:focus{border-color:var(--accent)}
+  .search-clear{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);font-size:15px;cursor:pointer;padding:4px;display:none}
+  .search-input:not(:placeholder-shown)~.search-clear{display:block}
+
+  /* ── TAGS ── */
+  .tags-row{display:flex;gap:6px;overflow-x:auto;padding:10px 16px 0;scrollbar-width:none}
+  .tags-row::-webkit-scrollbar{display:none}
+  .tag-pill{flex-shrink:0;padding:4px 13px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-family:'Sora',sans-serif;font-size:12px;cursor:pointer;transition:all .18s;white-space:nowrap}
+  .tag-pill.active{background:var(--accent);border-color:var(--accent);color:#0a0a0a;font-weight:600}
+
+  /* ── LIST ── */
+  .main{padding:10px 14px;padding-bottom:calc(72px + var(--safe-bot))}
+  .section-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--text3);text-transform:uppercase;margin:16px 2px 7px}
+  .count-badge{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);text-align:right;padding:4px 2px 0}
+  .card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:6px;cursor:pointer;transition:background .15s,border-color .15s;animation:fadeUp .2s ease both}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+  .card:active{background:#151515;border-color:var(--border2)}
+  .card-inner{display:flex;align-items:center;gap:12px}
+  .card-ic{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .card-text{flex:1;min-width:0}
+  .card-title{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card-sub{font-size:12px;color:var(--text2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .empty-state{text-align:center;padding:56px 20px;color:var(--text3)}
+  .empty-state p{font-size:13px;line-height:1.8;margin-top:10px}
+
+  /* ── OVERLAY / SHEET ── */
+  .overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.76);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .22s}
+  .overlay.show{opacity:1;pointer-events:all}
+  .sheet{width:100%;background:#131313;border-radius:20px 20px 0 0;border:1px solid var(--border2);border-bottom:none;max-height:92dvh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);padding-bottom:calc(20px + var(--safe-bot))}
+  .overlay.show .sheet{transform:translateY(0)}
+  .sheet-handle{width:30px;height:3px;background:var(--border2);border-radius:2px;margin:12px auto 16px}
+
+  /* ── DETAIL ── */
+  .detail-head{text-align:center;padding:0 20px 18px;border-bottom:1px solid var(--border)}
+  .detail-ic-wrap{width:64px;height:64px;border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+  .detail-name{font-size:18px;font-weight:700;margin-bottom:3px}
+  .detail-cat{font-size:11px;color:var(--text2);font-family:'DM Mono',monospace;letter-spacing:1px}
+  .detail-body{padding:16px 18px 0}
+  .field-group{margin-bottom:12px}
+  .field-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-bottom:5px}
+  .field-val{background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:13px;display:flex;align-items:center;gap:8px;word-break:break-all}
+  .field-val.mono{font-family:'DM Mono',monospace}
+  .pw-text{flex:1;filter:blur(5px);transition:filter .2s;user-select:none}
+  .pw-text.reveal{filter:none;user-select:text}
+  .fv-actions{display:flex;gap:5px;flex-shrink:0}
+  .ic-btn{background:var(--bg2);border:1px solid var(--border2);border-radius:7px;color:var(--text2);cursor:pointer;padding:5px 9px;font-size:11px;font-family:'DM Mono',monospace;transition:all .15s;display:flex;align-items:center;gap:4px;white-space:nowrap}
+  .ic-btn:active{background:var(--border2);color:var(--accent)}
+  .notes-val{background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:13px;color:var(--text);line-height:1.65;white-space:pre-wrap;word-break:break-word}
+
+  /* ── ICON PICKER ── */
+  .icon-grid{display:grid;grid-template-columns:repeat(9,1fr);gap:5px;margin-top:7px}
+  .icon-opt{aspect-ratio:1;border-radius:9px;border:1px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+  .icon-opt.selected{border-color:var(--accent);background:var(--accent-bg)}
+  .icon-opt:active{transform:scale(.85)}
+
+  /* ── FORM ── */
+  .form-wrap{padding:0 16px}
+  .form-title{font-size:16px;font-weight:700;padding:0 16px 14px;display:flex;align-items:center;gap:8px}
+  .form-field{margin-bottom:12px}
+  .form-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-bottom:5px;display:block}
+  .form-input,.form-select,.form-textarea{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'Sora',sans-serif;font-size:14px;padding:11px 13px;outline:none;transition:border-color .18s;appearance:none}
+  .form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent)}
+  .form-input::placeholder,.form-textarea::placeholder{color:var(--text3)}
+  .form-textarea{resize:none;min-height:80px;line-height:1.55}
+  .form-select option{background:#181818}
+  .btn-row{display:flex;gap:8px;margin-top:16px}
+  .btn{flex:1;padding:13px;border-radius:12px;border:none;font-family:'Sora',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s}
+  .btn-primary{background:var(--accent);color:#0a0a0a}
+  .btn-primary:active{opacity:.85}
+  .btn-primary:disabled{opacity:.45;cursor:not-allowed}
+  .btn-ghost{background:var(--bg3);color:var(--text2);border:1px solid var(--border2)}
+  .btn-ghost:active{background:var(--border2)}
+  .btn-danger-full{background:rgba(217,95,95,.1);color:var(--danger);border:1px solid rgba(217,95,95,.22)}
+  .detail-actions{display:flex;gap:8px;margin-top:16px}
+
+  /* ── SETTINGS SHEET ── */
+  .settings-block{background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin:0 16px 16px}
+  .settings-row{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--border);cursor:pointer}
+  .settings-row:last-child{border-bottom:none}
+  .settings-row-label{font-size:14px;color:var(--text)}
+  .settings-row-val{font-size:11px;color:var(--text2);font-family:'DM Mono',monospace;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
+  .settings-section-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;padding:16px 16px 8px}
+
+  /* ── SQL BOX ── */
+  .sql-box{font-family:'DM Mono',monospace;font-size:11px;line-height:1.75;color:var(--text2);background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;user-select:text;white-space:pre;overflow-x:auto}
+  .sql-key{color:#c9a84c}.sql-type{color:#7ab8d4}.sql-str{color:#7dc97a}
+
+  /* ── TOAST ── */
+  .toast{position:fixed;bottom:calc(20px + var(--safe-bot));left:50%;transform:translateX(-50%) translateY(14px);background:#1e1e1e;border:1px solid var(--border2);border-radius:9px;padding:8px 16px;font-size:13px;color:var(--text);opacity:0;pointer-events:none;transition:all .25s;z-index:999;white-space:nowrap}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  @media(max-width:375px){.icon-grid{gap:4px}}
+  @media(min-width:600px){.sheet,.setup-card{max-width:480px;margin-left:auto;margin-right:auto}.sheet{border-radius:20px 20px 0 0}}
+</style>
+</head>
+<body>
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="i-lock"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-chev"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></symbol>
+  <symbol id="i-copy"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+  <symbol id="i-eye"    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-eyeoff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></symbol>
+  <symbol id="i-edit"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></symbol>
+  <symbol id="i-trash"  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></symbol>
+  <!-- entry icons -->
+  <symbol id="ic-lock"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="ic-key"    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></symbol>
+  <symbol id="ic-mail"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></symbol>
+  <symbol id="ic-card"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></symbol>
+  <symbol id="ic-phone"  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></symbol>
+  <symbol id="ic-star"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></symbol>
+  <symbol id="ic-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+  <symbol id="ic-user"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+  <symbol id="ic-wifi"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></symbol>
+  <symbol id="ic-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="ic-note"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></symbol>
+  <symbol id="ic-chart"  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></symbol>
+  <symbol id="ic-globe"  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
+  <symbol id="ic-bank"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="22" x2="21" y2="22"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 2 20 7 4 7"/></symbol>
+  <symbol id="ic-chat"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="ic-dollar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></symbol>
+  <symbol id="ic-game"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><line x1="15" y1="13" x2="15.01" y2="13"/><line x1="18" y1="11" x2="18.01" y2="11"/><rect x="2" y="6" width="20" height="12" rx="2"/></symbol>
+  <symbol id="ic-more"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+</svg>
+
+<!-- ════ SETUP SCREEN ════ -->
+<div class="setup-screen" id="setupScreen">
+  <div class="setup-logo">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0a0a0a" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+  </div>
+  <div class="setup-title">VAULT</div>
+  <div class="setup-sub">ใส่ Supabase credentials<br>เพื่อเชื่อมต่อและซิงค์ข้อมูล</div>
+
+  <div class="setup-card">
+    <div class="setup-hint">
+      ไปที่ <b>supabase.com → Project → Connect</b><br>
+      แล้วคัดลอก <b>Project URL</b> และ <b>Publishable key</b>
+    </div>
+    <div class="form-field" style="margin:0">
+      <label class="form-label">Project URL</label>
+      <input class="form-input" id="cfgUrl" placeholder="https://xxxx.supabase.co"
+        autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+    </div>
+    <div class="form-field" style="margin:0">
+      <label class="form-label">Publishable Key (anon)</label>
+      <input class="form-input" id="cfgKey" placeholder="eyJhbGci..."
+        autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+    </div>
+    <button class="btn btn-primary" id="connectBtn" onclick="doConnect()">เชื่อมต่อ</button>
+    <div id="connectErr" style="font-size:12px;color:var(--danger);text-align:center;display:none"></div>
+
+    <!-- SQL setup -->
+    <details style="margin-top:4px">
+      <summary style="font-size:12px;color:var(--text3);cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:1px;list-style:none">
+        ▸ SQL สำหรับสร้าง Table (ครั้งแรกเท่านั้น)
+      </summary>
+      <div style="margin-top:10px">
+        <div class="sql-box"><span class="sql-key">create table</span> vault_entries (
+  id        text <span class="sql-key">primary key</span>,
+  name      text <span class="sql-key">not null</span>,
+  cat       text <span class="sql-key">default</span> <span class="sql-str">'อื่นๆ'</span>,
+  icon      text <span class="sql-key">default</span> <span class="sql-str">'ic-lock'</span>,
+  user_col  text,
+  pass      text,
+  notes     text,
+  ts        bigint,
+  created_at timestamptz <span class="sql-key">default</span> now()
+);
+
+<span class="sql-key">alter table</span> vault_entries
+  <span class="sql-key">disable row level security</span>;</div>
+        <button class="ic-btn" style="margin-top:8px;width:100%;justify-content:center" onclick="copySql()">
+          <svg width="12" height="12"><use href="#i-copy"/></svg> คัดลอก SQL
+        </button>
+      </div>
+    </details>
+  </div>
+</div>
+
+<!-- ════ MAIN APP ════ -->
+<div id="appShell" style="display:none">
+  <div class="header">
+    <div class="header-top">
+      <div class="logo-wrap">
+        <div class="logo-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0a0a0a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <div class="logo-text">VAULT <span>/ store</span></div>
+      </div>
+      <div class="hdr-right">
+        <div class="sync-dot" id="syncDot"></div>
+        <button class="icon-btn" onclick="syncNow()" title="sync">
+          <svg width="14" height="14"><use href="#i-refresh"/></svg>
+        </button>
+        <button class="icon-btn" onclick="openSettings()">
+          <svg width="14" height="14"><use href="#i-settings"/></svg>
+        </button>
+        <button class="btn-add" onclick="openAdd()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0a0a0a" stroke-width="2.7" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="search-wrap">
+      <span class="search-ic">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </span>
+      <input class="search-input" type="search" placeholder="ค้นหา..." id="searchInput" oninput="render()" autocomplete="off">
+      <button class="search-clear" onclick="clearSearch()">✕</button>
+    </div>
+  </div>
+  <div class="tags-row" id="tagsRow"></div>
+  <div class="main" id="mainList"></div>
+</div>
+
+<!-- DETAIL -->
+<div class="overlay" id="detailOverlay" onclick="closeSheet('detailOverlay',event)">
+  <div class="sheet"><div class="sheet-handle"></div><div id="detailContent"></div></div>
+</div>
+
+<!-- FORM -->
+<div class="overlay" id="formOverlay" onclick="closeSheet('formOverlay',event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="form-title" id="formTitle">เพิ่มรายการ</div>
+    <div class="form-wrap">
+      <div class="form-field">
+        <label class="form-label">ชื่อ / ชื่อบัญชี</label>
+        <input class="form-input" id="fName" placeholder="เช่น Gmail, LINE, ธนาคาร...">
+      </div>
+      <div class="form-field">
+        <label class="form-label">หมวดหมู่</label>
+        <select class="form-select" id="fCat">
+          <option value="บัญชีออนไลน์">บัญชีออนไลน์</option>
+          <option value="ธนาคาร">ธนาคาร</option>
+          <option value="โซเชียล">โซเชียล</option>
+          <option value="การเงิน">การเงิน</option>
+          <option value="เกม">เกม</option>
+          <option value="อื่นๆ">อื่นๆ</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-label">ไอคอน</label>
+        <div class="icon-grid" id="iconGrid"></div>
+      </div>
+      <div class="form-field">
+        <label class="form-label">อีเมล / ยูสเซอร์</label>
+        <input class="form-input" id="fUser" placeholder="อีเมล หรือ username">
+      </div>
+      <div class="form-field">
+        <label class="form-label">รหัสผ่าน</label>
+        <input class="form-input" id="fPass" placeholder="รหัสผ่าน" autocomplete="new-password">
+      </div>
+      <div class="form-field">
+        <label class="form-label">หมายเหตุ / ข้อมูลเพิ่มเติม</label>
+        <textarea class="form-textarea" id="fNotes" placeholder="เลขบัญชี, PIN, ข้อมูลเพิ่มเติม..."></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="closeSheet('formOverlay',null)">ยกเลิก</button>
+        <button class="btn btn-primary" id="saveBtn" onclick="saveEntry()">บันทึก</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="overlay" id="settingsOverlay" onclick="closeSheet('settingsOverlay',event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="form-title">ตั้งค่า</div>
+    <div class="settings-section-label">Supabase</div>
+    <div class="settings-block">
+      <div class="settings-row" style="cursor:default">
+        <div class="settings-row-label">Project URL</div>
+        <div class="settings-row-val" id="stUrl">—</div>
+      </div>
+      <div class="settings-row" onclick="editConfig()">
+        <div class="settings-row-label">เปลี่ยน Config</div>
+        <svg width="14" height="14"><use href="#i-chev"/></svg>
+      </div>
+    </div>
+    <div class="settings-section-label">ข้อมูล</div>
+    <div class="settings-block">
+      <div class="settings-row" onclick="syncNow();closeSheet('settingsOverlay',null)">
+        <div class="settings-row-label">ซิงค์ตอนนี้</div>
+        <svg width="14" height="14"><use href="#i-refresh"/></svg>
+      </div>
+      <div class="settings-row" onclick="clearConfig()">
+        <div class="settings-row-label" style="color:var(--danger)">ล้างการตั้งค่า</div>
+        <svg width="14" height="14" style="color:var(--danger)"><use href="#i-trash"/></svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════
+const ICONS = ['ic-lock','ic-key','ic-mail','ic-card','ic-phone','ic-star','ic-shield','ic-user','ic-wifi','ic-folder','ic-note','ic-chart','ic-globe','ic-bank','ic-chat','ic-dollar','ic-game','ic-more'];
+const CAT_BG = {'บัญชีออนไลน์':'#0d1921','ธนาคาร':'#0d1c10','โซเชียล':'#1c0d21','การเงิน':'#231a08','เกม':'#0d0d21','อื่นๆ':'#181818'};
+const CAT_ST = {'บัญชีออนไลน์':'#1e4a70','ธนาคาร':'#1e5028','โซเชียล':'#501e70','การเงิน':'#6a4810','เกม':'#1e1e70','อื่นๆ':'#323232'};
+const SQL_TEXT = `create table vault_entries (
+  id        text primary key,
+  name      text not null,
+  cat       text default 'อื่นๆ',
+  icon      text default 'ic-lock',
+  user_col  text,
+  pass      text,
+  notes     text,
+  ts        bigint,
+  created_at timestamptz default now()
+);
+alter table vault_entries disable row level security;`;
+
+let SB_URL = localStorage.getItem('sb_url') || '';
+let SB_KEY = localStorage.getItem('sb_key') || '';
+
+// ══════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════
+const s = (id,sz=18,c='currentColor') =>
+  `<svg width="${sz}" height="${sz}" style="color:${c};flex-shrink:0;display:block"><use href="#${id}"/></svg>`;
+
+function showToast(msg, dur=1800) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+function copyText(text) {
+  navigator.clipboard?.writeText(text).then(() => showToast('✓ คัดลอกแล้ว')).catch(() => {
+    const ta = Object.assign(document.createElement('textarea'), {value:text});
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta); showToast('✓ คัดลอกแล้ว');
+  });
+}
+function copySql() { copyText(SQL_TEXT); }
+
+function dot(state) {
+  const d = document.getElementById('syncDot'); if(!d) return;
+  d.className = 'sync-dot' + (state==='ok' ? ' ok' : state==='syncing' ? ' syncing' : state==='err' ? ' err' : '');
+}
+
+function closeSheet(id, e) {
+  if (!e || e.target === document.getElementById(id))
+    document.getElementById(id).classList.remove('show');
+}
+
+// ══════════════════════════════════════════
+//  SUPABASE REST
+// ══════════════════════════════════════════
+const sbh = () => ({
+  'Content-Type': 'application/json',
+  'apikey': SB_KEY,
+  'Authorization': `Bearer ${SB_KEY}`
+});
+
+async function sbGet() {
+  const r = await fetch(`${SB_URL}/rest/v1/vault_entries?select=*&order=ts.desc`, { headers: sbh() });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+async function sbInsert(row) {
+  const r = await fetch(`${SB_URL}/rest/v1/vault_entries`, {
+    method:'POST', headers:{...sbh(), Prefer:'return=minimal'}, body: JSON.stringify(row)
+  });
+  if (!r.ok) { const e = await r.json().catch(()=>{}); throw new Error(e?.message || `HTTP ${r.status}`); }
+}
+async function sbUpdate(id, row) {
+  const r = await fetch(`${SB_URL}/rest/v1/vault_entries?id=eq.${id}`, {
+    method:'PATCH', headers:{...sbh(), Prefer:'return=minimal'}, body: JSON.stringify(row)
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+}
+async function sbDelete(id) {
+  const r = await fetch(`${SB_URL}/rest/v1/vault_entries?id=eq.${id}`, {
+    method:'DELETE', headers: sbh()
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+}
+
+// map db row → local entry
+const fromRow = r => ({ id:r.id, name:r.name, cat:r.cat, icon:r.icon, user:r.user_col, pass:r.pass, notes:r.notes, ts:r.ts });
+// map local entry → db row
+const toRow  = e => ({ id:e.id, name:e.name, cat:e.cat, icon:e.icon, user_col:e.user, pass:e.pass, notes:e.notes, ts:e.ts });
+
+// ══════════════════════════════════════════
+//  CONNECT / SETUP
+// ══════════════════════════════════════════
+async function doConnect() {
+  const url = document.getElementById('cfgUrl').value.trim().replace(/\/+$/,'');
+  const key = document.getElementById('cfgKey').value.trim();
+  const err = document.getElementById('connectErr');
+  const btn = document.getElementById('connectBtn');
+
+  if (!url || !key) { err.textContent = 'กรุณากรอกข้อมูลให้ครบ'; err.style.display='block'; return; }
+  err.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'กำลังเชื่อมต่อ...';
+
+  SB_URL = url; SB_KEY = key;
+  try {
+    // test connection by fetching table
+    const r = await fetch(`${SB_URL}/rest/v1/vault_entries?limit=1`, { headers: sbh() });
+    if (!r.ok) {
+      const j = await r.json().catch(()=>null);
+      throw new Error(j?.message || j?.hint || `HTTP ${r.status} — ตรวจสอบ URL และ Key อีกครั้ง`);
+    }
+    localStorage.setItem('sb_url', SB_URL);
+    localStorage.setItem('sb_key', SB_KEY);
+    showApp();
+  } catch(e) {
+    err.textContent = e.message; err.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'เชื่อมต่อ';
+    SB_URL = ''; SB_KEY = '';
+  }
+}
+
+function editConfig() {
+  closeSheet('settingsOverlay', null);
+  document.getElementById('cfgUrl').value = SB_URL;
+  document.getElementById('cfgKey').value = SB_KEY;
+  document.getElementById('appShell').style.display = 'none';
+  document.getElementById('setupScreen').classList.add('show');
+}
+
+function clearConfig() {
+  if (!confirm('ล้างการตั้งค่าและออกจากแอป?')) return;
+  localStorage.removeItem('sb_url'); localStorage.removeItem('sb_key'); localStorage.removeItem('vault_v2');
+  location.reload();
+}
+
+// ══════════════════════════════════════════
+//  DATA
+// ══════════════════════════════════════════
+let entries = JSON.parse(localStorage.getItem('vault_v2') || '[]');
+let activeTag = 'ทั้งหมด', editId = null, selIcon = 'ic-lock', revealed = {};
+
+function saveLocal() { localStorage.setItem('vault_v2', JSON.stringify(entries)); }
+
+async function syncNow() {
+  dot('syncing');
+  try {
+    const rows = await sbGet();
+    entries = rows.map(fromRow);
+    saveLocal(); render(); dot('ok');
+  } catch(e) { dot('err'); showToast('⚠ sync ไม่ได้: ' + e.message, 3000); }
+}
+
+// ══════════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════════
+function render() {
+  const q = document.getElementById('searchInput')?.value.toLowerCase() || '';
+  const tags = ['ทั้งหมด', ...new Set(entries.map(e => e.cat))];
+
+  document.getElementById('tagsRow').innerHTML = tags.map(t =>
+    `<button class="tag-pill ${t===activeTag?'active':''}" onclick="setTag('${t}')">${t}</button>`
+  ).join('');
+
+  let list = entries.filter(e => {
+    const mt = activeTag==='ทั้งหมด' || e.cat===activeTag;
+    const mq = !q || [e.name,e.user,e.notes,e.cat].some(x => x?.toLowerCase().includes(q));
+    return mt && mq;
+  });
+
+  const el = document.getElementById('mainList');
+  if (!list.length) {
+    el.innerHTML = `<div class="empty-state">${s('i-lock',40,'#3e3c38')}<p>${entries.length?'ไม่พบรายการ':'ยังไม่มีข้อมูล<br>กด + เพื่อเพิ่มรายการแรก'}</p></div>`;
+    return;
+  }
+  const groups = {};
+  list.forEach(e => { (groups[e.cat]??=[]).push(e); });
+  let html = `<div class="count-badge">${list.length} รายการ</div>`;
+  for (const [cat,items] of Object.entries(groups)) {
+    if (activeTag==='ทั้งหมด') html += `<div class="section-label">${cat}</div>`;
+    items.forEach((e,i) => {
+      const bg=CAT_BG[e.cat]||'#181818', st=CAT_ST[e.cat]||'#323232';
+      const sub = e.user || e.notes?.split('\n')[0] || '—';
+      html += `<div class="card" style="animation-delay:${i*.03}s" onclick="openDetail('${e.id}')">
+        <div class="card-inner">
+          <div class="card-ic" style="background:${bg};border:1px solid ${st}">${s(e.icon||'ic-lock',19,st)}</div>
+          <div class="card-text">
+            <div class="card-title">${e.name}</div>
+            <div class="card-sub">${sub}</div>
+          </div>
+          ${s('i-chev',14,'#3e3c38')}
+        </div>
+      </div>`;
+    });
+  }
+  el.innerHTML = html;
+}
+
+const setTag = t => { activeTag=t; render(); };
+const clearSearch = () => { document.getElementById('searchInput').value=''; render(); };
+
+// ══════════════════════════════════════════
+//  DETAIL
+// ══════════════════════════════════════════
+function openDetail(id) {
+  const e = entries.find(x=>x.id===id); if(!e) return;
+  revealed[id] = false;
+  const bg=CAT_BG[e.cat]||'#181818', st=CAT_ST[e.cat]||'#323232';
+  let h = `<div class="detail-head">
+    <div class="detail-ic-wrap" style="background:${bg};border:1px solid ${st}">${s(e.icon||'ic-lock',28,st)}</div>
+    <div class="detail-name">${e.name}</div>
+    <div class="detail-cat">${e.cat}</div>
+  </div><div class="detail-body">`;
+
+  if (e.user) h += `<div class="field-group"><div class="field-label">อีเมล / ยูสเซอร์</div>
+    <div class="field-val"><span style="flex:1">${e.user}</span>
+      <div class="fv-actions"><button class="ic-btn" onclick="copyText('${e.user.replace(/'/g,"\\'")}')">
+        ${s('i-copy',12)} คัดลอก</button></div></div></div>`;
+
+  if (e.pass) h += `<div class="field-group"><div class="field-label">รหัสผ่าน</div>
+    <div class="field-val mono">
+      <span class="pw-text" id="pw_${id}">${e.pass}</span>
+      <div class="fv-actions">
+        <button class="ic-btn" onclick="copyText('${e.pass.replace(/'/g,"\\'")}')">
+          ${s('i-copy',12)} คัดลอก</button>
+        <button class="ic-btn" onclick="togglePw('${id}')" id="pwbtn_${id}">
+          ${s('i-eye',12)} แสดง</button>
+      </div>
+    </div></div>`;
+
+  if (e.notes) h += `<div class="field-group"><div class="field-label">หมายเหตุ</div>
+    <div class="notes-val">${e.notes}</div></div>`;
+
+  h += `<div class="detail-actions">
+    <button class="btn btn-ghost" onclick="openEdit('${id}')">${s('i-edit',13)} &nbsp;แก้ไข</button>
+    <button class="btn btn-danger-full" onclick="delEntry('${id}')">${s('i-trash',13)} &nbsp;ลบ</button>
+  </div></div>`;
+
+  document.getElementById('detailContent').innerHTML = h;
+  document.getElementById('detailOverlay').classList.add('show');
+}
+
+function togglePw(id) {
+  revealed[id] = !revealed[id];
+  document.getElementById(`pw_${id}`)?.classList.toggle('reveal', revealed[id]);
+  const b = document.getElementById(`pwbtn_${id}`);
+  if (b) b.innerHTML = revealed[id] ? `${s('i-eyeoff',12)} ซ่อน` : `${s('i-eye',12)} แสดง`;
+}
+
+// ══════════════════════════════════════════
+//  FORM
+// ══════════════════════════════════════════
+function buildIconGrid() {
+  document.getElementById('iconGrid').innerHTML = ICONS.map(ic =>
+    `<button class="icon-opt ${ic===selIcon?'selected':''}" onclick="selIconFn('${ic}')" type="button">
+      ${s(ic,16,ic===selIcon?'#c9a84c':'#3e3c38')}</button>`).join('');
+}
+const selIconFn = ic => { selIcon=ic; buildIconGrid(); };
+
+function openAdd() {
+  editId=null; selIcon='ic-lock';
+  document.getElementById('formTitle').textContent='เพิ่มรายการ';
+  ['fName','fUser','fPass','fNotes'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('fCat').value='บัญชีออนไลน์';
+  document.getElementById('saveBtn').disabled=false;
+  document.getElementById('saveBtn').textContent='บันทึก';
+  buildIconGrid();
+  document.getElementById('formOverlay').classList.add('show');
+  setTimeout(()=>document.getElementById('fName').focus(), 380);
+}
+
+function openEdit(id) {
+  const e=entries.find(x=>x.id===id); if(!e) return;
+  editId=id; selIcon=e.icon||'ic-lock';
+  document.getElementById('formTitle').textContent='แก้ไขรายการ';
+  document.getElementById('fName').value=e.name;
+  document.getElementById('fUser').value=e.user||'';
+  document.getElementById('fPass').value=e.pass||'';
+  document.getElementById('fNotes').value=e.notes||'';
+  document.getElementById('fCat').value=e.cat;
+  document.getElementById('saveBtn').disabled=false;
+  document.getElementById('saveBtn').textContent='บันทึก';
+  buildIconGrid();
+  document.getElementById('detailOverlay').classList.remove('show');
+  document.getElementById('formOverlay').classList.add('show');
+}
+
+async function saveEntry() {
+  const name = document.getElementById('fName').value.trim();
+  if (!name) { showToast('⚠ กรุณาใส่ชื่อ'); return; }
+  const btn = document.getElementById('saveBtn');
+  btn.disabled=true; btn.textContent='กำลังบันทึก...';
+
+  const entry = {
+    id: editId || Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+    name, cat: document.getElementById('fCat').value, icon: selIcon,
+    user: document.getElementById('fUser').value.trim(),
+    pass: document.getElementById('fPass').value,
+    notes: document.getElementById('fNotes').value.trim(),
+    ts: Date.now()
+  };
+
+  // optimistic local
+  if (editId) { const i=entries.findIndex(e=>e.id===editId); if(i>-1) entries[i]=entry; }
+  else entries.unshift(entry);
+  saveLocal(); render();
+  document.getElementById('formOverlay').classList.remove('show');
+
+  try {
+    if (editId) await sbUpdate(entry.id, toRow(entry));
+    else await sbInsert(toRow(entry));
+    dot('ok'); showToast(editId?'✓ แก้ไขแล้ว':'✓ เพิ่มแล้ว');
+  } catch(e) {
+    dot('err'); showToast('⚠ บันทึก local แล้ว แต่ sync ไม่ได้', 3000);
+  }
+}
+
+async function delEntry(id) {
+  if (!confirm('ยืนยันลบรายการนี้?')) return;
+  entries = entries.filter(e=>e.id!==id); saveLocal(); render();
+  document.getElementById('detailOverlay').classList.remove('show');
+  showToast('ลบแล้ว');
+  try { await sbDelete(id); dot('ok'); } catch { dot('err'); }
+}
+
+// ══════════════════════════════════════════
+//  SETTINGS
+// ══════════════════════════════════════════
+function openSettings() {
+  document.getElementById('stUrl').textContent = SB_URL.replace('https://','').slice(0,24)+'…';
+  document.getElementById('settingsOverlay').classList.add('show');
+}
+
+// ══════════════════════════════════════════
+//  SHOW APP
+// ══════════════════════════════════════════
+function showApp() {
+  document.getElementById('setupScreen').classList.remove('show');
+  document.getElementById('appShell').style.display = '';
+  render(); syncNow();
+}
+
+// ══════════════════════════════════════════
+//  KEYBOARD
+// ══════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape') ['detailOverlay','formOverlay','settingsOverlay'].forEach(id =>
+    document.getElementById(id).classList.remove('show'));
+});
+
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+if (SB_URL && SB_KEY) {
+  showApp();
+} else {
+  document.getElementById('setupScreen').classList.add('show');
+}
+</script>
+</body>
+</html>
