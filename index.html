@@ -309,6 +309,50 @@
     }
     .btn-del:hover { color: var(--danger); }
 
+    /* ── Overweight Panel ── */
+    .over-panel { display: none; }
+    .over-panel.open {
+      display: block;
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: #ef444410;
+      border: 1px solid #ef444440;
+    }
+    .over-title {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--danger);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .over-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+    .over-item {
+      background: #ef444418;
+      border: 1px solid #ef444430;
+      border-radius: 8px;
+      padding: 10px 8px;
+      text-align: center;
+    }
+    .over-item.sell {
+      background: #f59e0b18;
+      border-color: #f59e0b40;
+    }
+    .over-item .oi-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+    .over-item .oi-val { font-family: var(--font-display); font-size: 15px; font-weight: 800; margin-top: 2px; }
+    .over-note {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+    .over-note span { color: var(--warn); font-weight: 700; }
+
     /* ── Tranche Panel (expanded) ── */
     .tranche-panel { display: none; }
     .tranche-panel.open {
@@ -586,7 +630,8 @@ function App() {
   );
 
   const totalBought    = enriched.reduce((s, a) => s + a.bought, 0);
-  const totalRemaining = enriched.reduce((s, a) => s + Math.max(a.remaining, 0), 0);
+  const totalRemaining = totalCapital - totalBought;  // หักเงินที่ซื้อเกินออกด้วย
+  const totalOverweight = enriched.reduce((s, a) => s + (a.remaining < 0 ? Math.abs(a.remaining) : 0), 0);
 
   const updateAsset  = (id, field, val) => setAssets(p => p.map(a => a.id === id ? { ...a, [field]: val } : a));
   const removeAsset  = (id) => { if (confirm("ลบสินทรัพย์นี้?")) { setAssets(p => p.filter(a => a.id !== id)); if (selected === id) setSelected(null); } };
@@ -655,13 +700,21 @@ function App() {
             <div className="stat-label">ซื้อไปแล้ว</div>
             <div className="stat-value" style={{ color: "var(--warn)" }}>{sym}{fmtC(totalBought)}</div>
           </div>
-          <div className="stat-box">
-            <div className="stat-label">กระสุนเหลือ</div>
-            <div className="stat-value" style={{ color: "var(--accent)" }}>{sym}{fmtC(totalRemaining)}</div>
+          <div className="stat-box" style={ totalRemaining < 0 ? { borderColor: "#ef444440", background: "#ef444408" } : {} }>
+            <div className="stat-label" style={{ color: totalRemaining < 0 ? "var(--danger)" : undefined }}>
+              {totalRemaining < 0 ? "ใช้เกินงบ" : "กระสุนเหลือ"}
+            </div>
+            <div className="stat-value" style={{ color: totalRemaining < 0 ? "var(--danger)" : "var(--accent)" }}>
+              {totalRemaining < 0 ? `-${sym}${fmtC(Math.abs(totalRemaining))}` : `${sym}${fmtC(totalRemaining)}`}
+            </div>
           </div>
-          <div className="stat-box">
-            <div className="stat-label">Alloc รวม</div>
-            <div className="stat-value" style={{ color: allocColor }}>{totalAllocated.toFixed(1)}%</div>
+          <div className="stat-box" style={ totalOverweight > 0 ? { borderColor: "#ef444440", background: "#ef444408" } : {} }>
+            <div className="stat-label" style={{ color: totalOverweight > 0 ? "var(--danger)" : undefined }}>
+              {totalOverweight > 0 ? "⚠️ เกินโควตา" : "Alloc รวม"}
+            </div>
+            <div className="stat-value" style={{ color: totalOverweight > 0 ? "var(--danger)" : allocColor }}>
+              {totalOverweight > 0 ? `${sym}${fmtC(totalOverweight)}` : `${totalAllocated.toFixed(1)}%`}
+            </div>
           </div>
         </div>
 
@@ -689,6 +742,7 @@ function App() {
 
         {enriched.map(a => (
           <div key={a.id} className={`asset-row ${selected === a.id ? "selected" : ""}`}
+            style={ a.remaining < 0 ? { borderColor: selected === a.id ? "var(--danger)" : "#ef444430", background: selected === a.id ? "#ef444408" : undefined } : {} }
             onClick={() => setSelected(selected === a.id ? null : a.id)}>
             <div className="asset-top">
               <div className="asset-name">{a.name}</div>
@@ -707,9 +761,12 @@ function App() {
               <div style={{ textAlign: "right" }}>
                 <div className="quota-hint">โควตา {sym}{fmtC(a.quota)}</div>
                 <div className="remaining-val" style={{
-                  color: a.remaining <= 0 ? "var(--green)" : a.remaining < a.quota * 0.35 ? "var(--warn)" : "var(--danger)"
+                  color: a.remaining < 0 ? "var(--danger)" : a.remaining === 0 ? "var(--green)" : a.remaining < a.quota * 0.35 ? "var(--warn)" : "var(--danger)"
                 }}>
-                  {a.remaining <= 0 ? "✓ FULL" : `${sym}${fmtC(a.remaining)}`}
+                  {a.remaining < 0
+                    ? `เกิน ${sym}${fmtC(Math.abs(a.remaining))}`
+                    : a.remaining === 0 ? "✓ FULL"
+                    : `${sym}${fmtC(a.remaining)}`}
                 </div>
               </div>
             </div>
@@ -721,7 +778,32 @@ function App() {
               }} />
             </div>
 
-            {/* Tranche breakdown when expanded */}
+            {/* Overweight panel */}
+            {a.remaining < 0 && (
+              <div className={`over-panel ${selected === a.id ? "open" : ""}`} onClick={e => e.stopPropagation()}>
+                <div className="over-title">⚠️ ซื้อเกินโควตา — Rebalance Guide</div>
+                <div className="over-grid">
+                  <div className="over-item">
+                    <div className="oi-label" style={{ color: "var(--danger)" }}>เกินไป</div>
+                    <div className="oi-val" style={{ color: "var(--danger)" }}>{sym}{fmtC(Math.abs(a.remaining))}</div>
+                  </div>
+                  <div className="over-item">
+                    <div className="oi-label" style={{ color: "var(--danger)" }}>% เกิน</div>
+                    <div className="oi-val" style={{ color: "var(--danger)" }}>{((Math.abs(a.remaining) / a.quota) * 100).toFixed(1)}%</div>
+                  </div>
+                  <div className="over-item sell">
+                    <div className="oi-label" style={{ color: "var(--warn)" }}>ควรขาย</div>
+                    <div className="oi-val" style={{ color: "var(--warn)" }}>{sym}{fmtC(Math.abs(a.remaining))}</div>
+                  </div>
+                </div>
+                <div className="over-note">
+                  ถือเกิน <span>{((a.bought / a.quota) * 100).toFixed(1)}%</span> ของโควตา · ขายออก <span>{sym}{fmtC(Math.abs(a.remaining))}</span> เพื่อ rebalance กลับที่ <span>{sym}{fmtC(a.quota)}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Tranche panel — แสดงเฉพาะตอนยังมีกระสุนเหลือ */}
+            {a.remaining > 0 && (
             <div className={`tranche-panel ${selected === a.id ? "open" : ""}`} onClick={e => e.stopPropagation()}>
               <div className="tranche-hint">แผนยิงไม้ · โควตาเหลือ {sym}{fmtC(Math.max(a.remaining, 0))}</div>
               <div className="tranche-mini-grid">
@@ -738,6 +820,7 @@ function App() {
                 })}
               </div>
             </div>
+            )}
           </div>
         ))}
 
@@ -784,7 +867,7 @@ function App() {
         <div className="card">
           <div className="card-title">🎯 สรุปยอดแต่ละไม้</div>
           <div style={{ fontSize: "11px", color: "var(--muted)", marginBottom: "14px", fontWeight: 500 }}>
-            คำนวณจาก <span style={{ color: "var(--accent)", fontWeight: 700 }}>กระสุนที่เหลือรวม</span> {sym}{fmtC(totalRemaining)}
+            คำนวณจาก <span style={{ color: "var(--accent)", fontWeight: 700 }}>กระสุนที่เหลือจริง</span> {sym}{fmtC(Math.max(totalRemaining, 0))}
           </div>
           <div className="tranche-summary-grid">
             {tranches.map(t => (
@@ -792,7 +875,7 @@ function App() {
                 style={{ background: t.color + "12", border: `1px solid ${t.color}44` }}>
                 <div className="tb-label" style={{ color: t.color }}>{t.label}</div>
                 <div className="tb-pct">{t.pct}% ของที่เหลือ</div>
-                <div className="tb-amount" style={{ color: t.color }}>{sym}{fmtC((totalRemaining * t.pct) / 100)}</div>
+                <div className="tb-amount" style={{ color: t.color }}>{sym}{fmtC((Math.max(totalRemaining, 0) * t.pct) / 100)}</div>
                 <div className="tb-sub">รวมทุกตัว</div>
               </div>
             ))}
