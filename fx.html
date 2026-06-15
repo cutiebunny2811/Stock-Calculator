@@ -1,352 +1,636 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>FX Tracker</title>
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        ::-webkit-scrollbar { width: 0px; background: transparent; }
-        .fade-in { animation: fadeIn 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        input, select, button { outline: none; }
-        body { padding-bottom: env(safe-area-inset-bottom); }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>FX Tracker — Multi-Broker</title>
+<style>
+  :root{
+    --bg:#0a0e16;
+    --panel:#11161f;
+    --panel2:#161c28;
+    --border:#232b3a;
+    --text:#e8ecf4;
+    --muted:#7c8aa3;
+    --gold:#d4af6a;
+    --green:#34d399;
+    --red:#f87171;
+    --blue:#4f7cff;
+    --radius:16px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; -webkit-font-smoothing:antialiased;}
+  body{padding-bottom:40px;}
+  .container{max-width:640px; margin:0 auto; padding:16px;}
+
+  /* Header */
+  .header{display:flex; align-items:center; justify-content:space-between; padding:6px 4px 18px;}
+  .header-left{display:flex; align-items:center; gap:12px;}
+  .logo{width:42px; height:42px; border-radius:12px; background:linear-gradient(135deg,var(--gold),#9a7b3a); display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:700; color:#1a1407; flex-shrink:0;}
+  .header-title{font-size:18px; font-weight:700; letter-spacing:0.2px;}
+  .header-sub{font-size:12px; color:var(--muted); margin-top:2px;}
+  .icon-btn{width:38px; height:38px; border-radius:10px; background:var(--panel); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; color:var(--muted); cursor:pointer; transition:all .15s;}
+  .icon-btn:hover{color:var(--text); border-color:var(--gold);}
+  .icon-btn svg{width:18px; height:18px;}
+
+  /* Rate banner */
+  .rate-card{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; margin-bottom:14px; display:flex; align-items:center; justify-content:space-between;}
+  .rate-left .rate-label{font-size:11px; letter-spacing:1.5px; color:var(--muted); text-transform:uppercase; margin-bottom:6px;}
+  .rate-value{font-size:28px; font-weight:700; font-variant-numeric:tabular-nums;}
+  .rate-value .unit{font-size:13px; color:var(--muted); font-weight:500; margin-left:4px;}
+  .rate-meta{font-size:11px; color:var(--muted); margin-top:4px;}
+  .rate-right{display:flex; flex-direction:column; align-items:flex-end; gap:8px;}
+  .refresh-btn{width:36px; height:36px; border-radius:10px; background:var(--panel2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; color:var(--gold); cursor:pointer; transition:transform .4s;}
+  .refresh-btn.spinning svg{animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .refresh-btn svg{width:17px; height:17px;}
+  .status-dot{display:flex; align-items:center; gap:5px; font-size:11px; color:var(--muted);}
+  .dot{width:6px; height:6px; border-radius:50%; background:var(--green);}
+  .dot.err{background:var(--red);}
+
+  /* Tabs */
+  .tabs{display:flex; gap:6px; margin-bottom:14px; background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:4px;}
+  .tab{flex:1; text-align:center; padding:9px 4px; font-size:13px; font-weight:600; color:var(--muted); border-radius:9px; cursor:pointer; transition:all .15s; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .tab.active{background:var(--panel2); color:var(--gold); box-shadow:inset 0 0 0 1px var(--border);}
+
+  /* Summary grid */
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;}
+  .stat-card{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px;}
+  .stat-label{font-size:10.5px; letter-spacing:1.2px; color:var(--muted); text-transform:uppercase; margin-bottom:8px;}
+  .stat-value{font-size:21px; font-weight:700; font-variant-numeric:tabular-nums;}
+  .stat-sub{font-size:11.5px; color:var(--muted); margin-top:4px;}
+  .stat-value.green{color:var(--green);}
+  .stat-value.red{color:var(--red);}
+  .pl-row{display:flex; align-items:baseline; gap:6px;}
+  .pl-pct{font-size:12px; font-weight:600; padding:1px 6px; border-radius:6px;}
+  .pl-pct.pos{background:rgba(52,211,153,0.12); color:var(--green);}
+  .pl-pct.neg{background:rgba(248,113,113,0.12); color:var(--red);}
+
+  /* Section */
+  .section{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:18px; margin-bottom:14px;}
+  .section-title{font-size:13px; font-weight:700; letter-spacing:0.3px; color:var(--gold); margin-bottom:14px; display:flex; align-items:center; gap:8px;}
+  .section-title svg{width:15px; height:15px;}
+
+  /* Form */
+  .form-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;}
+  input, select{
+    width:100%; background:#070a10; border:1px solid var(--border); border-radius:10px;
+    padding:12px 13px; color:var(--text); font-size:14px; font-family:inherit;
+    -webkit-appearance:none; appearance:none;
+  }
+  input::placeholder{color:#4a5468;}
+  input:focus, select:focus{outline:none; border-color:var(--gold);}
+  select{cursor:pointer;}
+  .full{grid-column:1 / -1;}
+  .save-btn{
+    width:100%; padding:13px; border:none; border-radius:10px; background:var(--gold); color:#1a1407;
+    font-size:14.5px; font-weight:700; cursor:pointer; margin-top:4px; transition:filter .15s;
+  }
+  .save-btn:hover{filter:brightness(1.08);}
+  .save-btn:active{filter:brightness(0.92);}
+
+  /* History list */
+  .history-item{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:12px 0; border-bottom:1px solid var(--border);
+  }
+  .history-item:last-child{border-bottom:none;}
+  .history-left{display:flex; align-items:center; gap:11px; min-width:0;}
+  .history-icon{
+    width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center;
+    flex-shrink:0; font-size:14px;
+  }
+  .history-icon.deposit{background:rgba(52,211,153,0.12); color:var(--green);}
+  .history-icon.withdraw{background:rgba(248,113,113,0.12); color:var(--red);}
+  .history-text{min-width:0;}
+  .history-amount{font-size:14px; font-weight:600; font-variant-numeric:tabular-nums;}
+  .history-meta{font-size:11.5px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .history-right{display:flex; align-items:center; gap:10px; flex-shrink:0;}
+  .history-rate{font-size:13px; font-weight:600; font-variant-numeric:tabular-nums; text-align:right; color:var(--text);}
+  .history-rate .lbl{display:block; font-size:10px; color:var(--muted); font-weight:500;}
+  .del-btn{
+    width:30px; height:30px; border-radius:8px; background:var(--panel2); border:1px solid var(--border);
+    color:var(--muted); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;
+  }
+  .del-btn svg{width:14px; height:14px;}
+  .empty-state{text-align:center; padding:30px 10px; color:var(--muted); font-size:13px;}
+  .empty-state svg{width:32px; height:32px; margin:0 auto 10px; opacity:0.4; display:block;}
+
+  /* Backup buttons */
+  .backup-row{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .backup-btn{
+    padding:12px; border-radius:10px; border:1px solid var(--border); background:var(--panel2);
+    color:var(--text); font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center;
+    justify-content:center; gap:7px; transition:all .15s;
+  }
+  .backup-btn:hover{border-color:var(--gold); color:var(--gold);}
+  .backup-btn svg{width:15px; height:15px;}
+
+  /* Toast */
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--panel2); border:1px solid var(--gold); color:var(--text); padding:11px 20px;
+    border-radius:10px; font-size:13px; font-weight:600; opacity:0; transition:all .25s; z-index:999;
+    pointer-events:none; white-space:nowrap;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  /* Modal */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:flex-end;
+    justify-content:center; z-index:1000; backdrop-filter:blur(3px);
+  }
+  .modal-overlay.show{display:flex;}
+  .modal{
+    background:var(--panel); border:1px solid var(--border); border-radius:18px 18px 0 0;
+    width:100%; max-width:640px; padding:22px; padding-bottom:34px;
+    animation:slideUp .25s ease;
+  }
+  @keyframes slideUp{from{transform:translateY(100%);} to{transform:translateY(0);}}
+  .modal-title{font-size:16px; font-weight:700; margin-bottom:16px;}
+  .modal-actions{display:flex; gap:10px; margin-top:16px;}
+  .modal-actions button{flex:1; padding:12px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; border:1px solid var(--border);}
+  .btn-cancel{background:var(--panel2); color:var(--muted);}
+  .btn-confirm{background:var(--gold); color:#1a1407; border:none;}
+  .btn-danger{background:var(--red); color:#fff; border:none;}
+  textarea{
+    width:100%; min-height:90px; background:#070a10; border:1px solid var(--border); border-radius:10px;
+    padding:12px; color:var(--text); font-size:12.5px; font-family:monospace; resize:vertical;
+  }
+  .field-label{font-size:11px; color:var(--muted); margin-bottom:6px; display:block; letter-spacing:0.5px;}
+
+  @media (max-width:380px){
+    .stat-value{font-size:18px;}
+    .rate-value{font-size:24px;}
+  }
+</style>
 </head>
-<body class="bg-slate-950 text-slate-100 antialiased min-h-screen font-sans pb-20 selection:bg-blue-500/30">
+<body>
+<div class="container">
 
-    <div class="max-w-xl mx-auto p-4 space-y-6 fade-in">
-        
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="bg-gradient-to-tr from-blue-500 to-indigo-600 p-2.5 rounded-xl shadow-lg shadow-blue-900/20">
-                    <i data-lucide="banknote" class="text-white w-6 h-6"></i>
-                </div>
-                <div>
-                    <h1 class="text-xl font-bold text-white tracking-tight">FX Tracker</h1>
-                    <p class="text-xs text-slate-400">USD/THB Management</p>
-                </div>
-            </div>
-            <button onclick="toggleSettings()" class="p-2 rounded-full hover:bg-slate-800 text-slate-400 transition-colors">
-                <i data-lucide="settings" class="w-5 h-5"></i>
-            </button>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-            <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4 relative overflow-hidden">
-                <div class="absolute top-0 right-0 p-2 opacity-10"><i data-lucide="globe" class="w-12 h-12"></i></div>
-                <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1">Market Rate (USDTHB)</p>
-                <div class="flex items-baseline gap-2">
-                    <h2 id="market-rate" class="text-3xl font-black text-white">0.00</h2>
-                    <span class="text-xs text-slate-500">฿/$</span>
-                </div>
-                <button onclick="fetchRate()" id="btn-refresh" class="absolute bottom-3 right-3 text-blue-500 hover:text-blue-400"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
-            </div>
-
-            <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4 relative overflow-hidden">
-                <div class="absolute top-0 right-0 p-2 opacity-10"><i data-lucide="wallet" class="w-12 h-12"></i></div>
-                <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1">My Avg Cost</p>
-                <div class="flex items-baseline gap-2">
-                    <h2 id="avg-cost" class="text-3xl font-black text-emerald-400">0.00</h2>
-                    <span class="text-xs text-slate-500">฿/$</span>
-                </div>
-                <p id="diff-pct" class="text-[10px] font-bold mt-1 text-slate-600">--%</p>
-            </div>
-        </div>
-
-        <div class="bg-slate-900/50 rounded-xl border border-slate-800 p-4 flex justify-between items-center text-sm">
-            <div>
-                <p class="text-slate-500 text-xs">Total USD Held</p>
-                <p id="total-usd" class="font-bold text-white text-lg">$0.00</p>
-            </div>
-            <div class="text-right">
-                <p class="text-slate-500 text-xs">Unrealized FX P/L</p>
-                <p id="total-pl" class="font-bold text-slate-500 text-lg">฿0.00</p>
-            </div>
-        </div>
-
-        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4 h-64 relative">
-            <canvas id="fxChart"></canvas>
-        </div>
-
-        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4 space-y-3">
-            <div class="flex items-center gap-2 mb-2"><i data-lucide="plus-circle" class="w-4 h-4 text-blue-500"></i><span class="text-sm font-bold text-white">Record Transaction</span></div>
-            
-            <div class="grid grid-cols-2 gap-2">
-                <input type="date" id="inp-date" class="bg-black border border-slate-800 rounded-xl px-3 py-2 text-white text-sm">
-                <select id="inp-type" class="bg-black border border-slate-800 rounded-xl px-3 py-2 text-white text-sm">
-                    <option value="BUY">🟢 Deposit (Buy USD)</option>
-                    <option value="SELL">🔴 Withdraw (Sell USD)</option>
-                </select>
-            </div>
-            
-            <div class="grid grid-cols-2 gap-2">
-                <input type="number" id="inp-amount" placeholder="Amount ($ USD)" class="bg-black border border-slate-800 rounded-xl px-3 py-2 text-white text-sm focus:border-blue-500">
-                <input type="number" id="inp-rate" placeholder="Rate (THB)" class="bg-black border border-slate-800 rounded-xl px-3 py-2 text-white text-sm focus:border-blue-500">
-            </div>
-            <input type="text" id="inp-note" placeholder="Note (e.g. Salary, Dividend)" class="w-full bg-black border border-slate-800 rounded-xl px-3 py-2 text-white text-sm focus:border-blue-500">
-            
-            <button onclick="addTx()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl text-sm transition-all shadow-lg shadow-blue-900/20">Save Transaction</button>
-        </div>
-
-        <div class="space-y-2 pb-10">
-            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">History</h3>
-<div id="tx-list" class="space-y-2 max-h-[400px] overflow-y-auto pr-1"></div>
-        </div>
-
-        <div id="modal-settings" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50 fade-in">
-            <div class="bg-slate-900 w-full max-w-sm rounded-2xl border border-slate-800 p-6 space-y-4 shadow-2xl">
-                <h3 class="text-lg font-bold text-white">Settings</h3>
-                <div>
-                    <label class="text-xs text-slate-500 uppercase font-bold block mb-2">Google Sheet CSV Link</label>
-                    <textarea id="inp-csv-link" rows="3" placeholder="https://docs.google.com/spreadsheets/.../pub?output=csv" class="w-full bg-black border border-slate-800 rounded-xl p-3 text-xs text-slate-300 focus:border-blue-500 resize-none"></textarea>
-                </div>
-                <div class="flex gap-2">
-                    <button onclick="toggleSettings()" class="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-400 text-sm font-bold">Cancel</button>
-                    <button onclick="saveSettings()" class="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold">Save</button>
-                </div>
-            </div>
-        </div>
-
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">฿</div>
+      <div>
+        <div class="header-title">FX Tracker</div>
+        <div class="header-sub">Multi-Broker USD/THB</div>
+      </div>
     </div>
+    <div class="icon-btn" onclick="openBackup()" title="Backup">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </div>
+  </div>
 
-    <script>
-        lucide.createIcons();
-        document.getElementById('inp-date').valueAsDate = new Date();
+  <!-- Live Rate -->
+  <div class="rate-card">
+    <div class="rate-left">
+      <div class="rate-label">USD/THB Live Rate</div>
+      <div class="rate-value" id="liveRate">--.--<span class="unit">฿/$</span></div>
+      <div class="rate-meta" id="rateMeta">กำลังโหลด...</div>
+    </div>
+    <div class="rate-right">
+      <div class="refresh-btn" id="refreshBtn" onclick="fetchRate(true)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </div>
+      <div class="status-dot"><span class="dot" id="statusDot"></span><span id="statusText">live</span></div>
+    </div>
+  </div>
 
-        // State
-        let transactions = JSON.parse(localStorage.getItem('fx_tx')) || [];
-        let config = JSON.parse(localStorage.getItem('fx_config')) || { csvUrl: '' };
-        let currentMarketRate = 0;
-        let chartInstance = null;
+  <!-- Tabs -->
+  <div class="tabs" id="tabs"></div>
 
-        // Init
-        calculateAndRender();
-        if(config.csvUrl) fetchRate();
+  <!-- Summary -->
+  <div class="grid2">
+    <div class="stat-card">
+      <div class="stat-label">Total USD Held</div>
+      <div class="stat-value" id="totalUsd">$0.00</div>
+      <div class="stat-sub" id="totalCostThb">ต้นทุน ฿0.00</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">My Avg Cost</div>
+      <div class="stat-value" id="avgCost">--.--<span style="font-size:12px;color:var(--muted);">฿/$</span></div>
+      <div class="stat-sub" id="avgCostSub">--</div>
+    </div>
+  </div>
 
-        // --- CORE LOGIC ---
-        function addTx() {
-            const date = document.getElementById('inp-date').value;
-            const type = document.getElementById('inp-type').value;
-            const amount = parseFloat(document.getElementById('inp-amount').value);
-            const rate = parseFloat(document.getElementById('inp-rate').value);
-            const note = document.getElementById('inp-note').value;
+  <div class="section" style="padding:16px 18px;">
+    <div class="stat-label" style="margin-bottom:6px;">Unrealized FX P/L</div>
+    <div class="pl-row">
+      <div class="stat-value" id="plValue">฿0.00</div>
+      <span class="pl-pct" id="plPct">0.00%</span>
+    </div>
+    <div class="stat-sub" id="plSub" style="margin-top:6px;">เทียบมูลค่าปัจจุบันกับต้นทุนที่ฝากเข้า</div>
+  </div>
 
-            if(!date || isNaN(amount) || isNaN(rate)) return alert("Please fill details correctly.");
+  <!-- Record Transaction -->
+  <div class="section">
+    <div class="section-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      บันทึกรายการ — <span id="formPortfolioLabel"></span>
+    </div>
+    <div class="form-grid">
+      <input type="date" id="txDate">
+      <select id="txType">
+        <option value="deposit">🟢 ฝาก (ซื้อ USD)</option>
+        <option value="withdraw">🔴 ถอน (ขาย USD)</option>
+      </select>
+    </div>
+    <div class="form-grid">
+      <input type="number" inputmode="decimal" id="txAmount" placeholder="จำนวน ($ USD)" step="0.01">
+      <input type="number" inputmode="decimal" id="txRate" placeholder="เรท (THB)" step="0.0001">
+    </div>
+    <input type="text" id="txNote" placeholder="โน้ต (เช่น เงินเดือน, ขายหุ้น)" class="full" style="margin-bottom:10px;">
+    <button class="save-btn" onclick="saveTransaction()">บันทึกรายการ</button>
+  </div>
 
-            transactions.push({ id: Date.now(), date, type, amount, rate, note });
-            transactions.sort((a,b) => new Date(a.date) - new Date(b.date)); // Keep chronological
-            
-            saveData();
-            calculateAndRender();
-            
-            // Clear form
-            document.getElementById('inp-amount').value = '';
-            document.getElementById('inp-rate').value = '';
-            document.getElementById('inp-note').value = '';
-        }
+  <!-- History -->
+  <div class="section">
+    <div class="section-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      ประวัติ — <span id="historyPortfolioLabel"></span>
+    </div>
+    <div id="historyList"></div>
+  </div>
 
-        function removeTx(id) {
-            if(confirm('Delete this transaction?')) {
-                transactions = transactions.filter(t => t.id !== id);
-                saveData();
-                calculateAndRender();
-            }
-        }
+</div>
 
-        function calculateAndRender() {
-            let totalUSD = 0;
-            let totalTHBCost = 0;
-            let avgRate = 0;
-            
-            // History for Chart
-            const chartLabels = [];
-            const chartAvgData = [];
-            const chartExecData = [];
+<!-- Backup Modal -->
+<div class="modal-overlay" id="backupOverlay" onclick="if(event.target===this)closeBackup()">
+  <div class="modal">
+    <div class="modal-title">Backup ข้อมูล</div>
+    <span class="field-label">EXPORT — คัดลอกข้อมูลทั้งหมดเก็บไว้</span>
+    <textarea id="exportArea" readonly></textarea>
+    <div class="modal-actions">
+      <button class="btn-confirm" onclick="copyExport()">📋 คัดลอกข้อมูล</button>
+    </div>
+    <div style="height:16px;"></div>
+    <span class="field-label">IMPORT — วางข้อมูลเพื่อกู้คืน (จะเขียนทับข้อมูลทั้งหมด)</span>
+    <textarea id="importArea" placeholder="วาง JSON ที่นี่..."></textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeBackup()">ปิด</button>
+      <button class="btn-danger" onclick="importData()">นำเข้าและเขียนทับ</button>
+    </div>
+  </div>
+</div>
 
-            const list = document.getElementById('tx-list');
-            list.innerHTML = '';
+<!-- Delete Confirm Modal -->
+<div class="modal-overlay" id="deleteOverlay" onclick="if(event.target===this)closeDelete()">
+  <div class="modal">
+    <div class="modal-title">ลบรายการนี้?</div>
+    <div style="color:var(--muted); font-size:13px; margin-bottom:6px;" id="deletePreview"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeDelete()">ยกเลิก</button>
+      <button class="btn-danger" onclick="confirmDelete()">ลบรายการ</button>
+    </div>
+  </div>
+</div>
 
-            transactions.forEach(tx => {
-                const isBuy = tx.type === 'BUY';
-                
-                // --- CALCULATION LOGIC (Weighted Average) ---
-                if (isBuy) {
-                    // Buying: Update Average Cost
-                    totalTHBCost += (tx.amount * tx.rate);
-                    totalUSD += tx.amount;
-                } else {
-                    // Selling: Average Cost STAYS SAME, but total holdings decrease
-                    // We realize profit/loss here, but cost basis per unit doesn't change
-                    const costOfSold = tx.amount * avgRate; // Use PREVIOUS avg rate
-                    totalTHBCost -= costOfSold; 
-                    totalUSD -= tx.amount;
-                }
+<div class="toast" id="toast"></div>
 
-                // Prevent division by zero
-                avgRate = totalUSD > 0 ? totalTHBCost / totalUSD : 0;
+<script>
+// ===== Data Model =====
+// data = { portfolios: { dime: [tx...], webull: [tx...], other: [tx...] }, rate: number }
+// tx = { id, date, type: 'deposit'|'withdraw', amount, rate, note }
 
-                // --- RENDER LIST ---
-                const html = `
-                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex justify-between items-center">
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs font-mono text-slate-500">${tx.date}</span>
-                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${isBuy ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}">${isBuy ? 'DEPOSIT' : 'WITHDRAW'}</span>
-                        </div>
-                        <div class="text-white font-bold text-sm mt-1">$${tx.amount.toLocaleString()} @ ${tx.rate.toFixed(2)}</div>
-                        <div class="text-xs text-slate-500">${tx.note || '-'}</div>
-                    </div>
-                    <button onclick="removeTx(${tx.id})" class="text-slate-700 hover:text-rose-500"><i data-lucide="trash-2" width="16"></i></button>
-                </div>`;
-                list.insertAdjacentHTML('afterbegin', html); // Newest top
+const PORTFOLIOS = [
+  { key: 'all', label: 'All' },
+  { key: 'dime', label: 'Dime' },
+  { key: 'webull', label: 'Webull' },
+  { key: 'other', label: 'Other' }
+];
 
-                // --- PREP CHART ---
-                chartLabels.push(tx.date);
-                chartAvgData.push(avgRate);
-                chartExecData.push(tx.rate); // The rate we actually got
-            });
+let state = {
+  portfolios: { dime: [], webull: [], other: [] },
+  liveRate: null,
+  rateTime: null
+};
 
-            // Update Dashboard
-            document.getElementById('avg-cost').innerText = avgRate.toFixed(2);
-            document.getElementById('total-usd').innerText = '$' + totalUSD.toLocaleString(undefined, {minimumFractionDigits:2});
+let activeTab = 'all';
+let pendingDelete = null; // {portfolio, id}
 
-            // Compare with Market Rate
-            if (currentMarketRate > 0) {
-                const diff = currentMarketRate - avgRate;
-                const diffPct = avgRate > 0 ? (diff / avgRate) * 100 : 0;
-                const pl = (currentMarketRate * totalUSD) - totalTHBCost;
+const STORAGE_KEY = 'fxtracker_data_v1';
 
-                const elDiff = document.getElementById('diff-pct');
-                elDiff.innerHTML = `${diff >= 0 ? '▲' : '▼'} ${Math.abs(diffPct).toFixed(2)}% vs Market`;
-                elDiff.className = `text-[10px] font-bold mt-1 ${diff >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
-                
-                // Color Avg Cost Text
-                const elAvg = document.getElementById('avg-cost');
-                elAvg.className = `text-3xl font-black ${currentMarketRate > avgRate ? 'text-emerald-400' : 'text-rose-400'}`;
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(parsed.portfolios) state.portfolios = parsed.portfolios;
+    }
+  }catch(e){}
+}
+function saveState(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({portfolios: state.portfolios})); }catch(e){}
+}
 
-                const elPL = document.getElementById('total-pl');
-                elPL.innerText = (pl>=0?'+':'') + '฿' + pl.toLocaleString(undefined, {minimumFractionDigits:2});
-                elPL.className = `font-bold text-lg ${pl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
-            }
+// ===== Init Tabs =====
+function renderTabs(){
+  const el = document.getElementById('tabs');
+  el.innerHTML = '';
+  PORTFOLIOS.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'tab' + (p.key === activeTab ? ' active' : '');
+    div.textContent = p.label;
+    div.setAttribute('onclick', "setTab('" + p.key + "')");
+    el.appendChild(div);
+  });
+}
 
-            renderChart(chartLabels, chartAvgData, chartExecData);
-            lucide.createIcons();
-        }
+function setTab(key){
+  activeTab = key;
+  renderTabs();
+  renderAll();
+}
 
-        // --- CHART ---
-        function renderChart(labels, avgData, execData) {
-            const ctx = document.getElementById('fxChart').getContext('2d');
-            if(chartInstance) chartInstance.destroy();
+// ===== Live Rate (frankfurter.app — free, no key) =====
+function fetchRate(manual){
+  const btn = document.getElementById('refreshBtn');
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  btn.classList.add('spinning');
+  fetch('https://api.frankfurter.app/latest?from=USD&to=THB')
+    .then(r => {
+      if(!r.ok) throw new Error('bad response');
+      return r.json();
+    })
+    .then(data => {
+      const rate = data.rates && data.rates.THB;
+      if(!rate) throw new Error('no rate');
+      state.liveRate = rate;
+      state.rateTime = data.date || new Date().toISOString().slice(0,10);
+      document.getElementById('liveRate').innerHTML = rate.toFixed(4) + '<span class="unit">฿/$</span>';
+      document.getElementById('rateMeta').textContent = 'ข้อมูลล่าสุด: ' + state.rateTime + ' (frankfurter.app)';
+      dot.classList.remove('err');
+      txt.textContent = 'live';
+      renderAll();
+    })
+    .catch(err => {
+      document.getElementById('rateMeta').textContent = 'โหลดเรทไม่สำเร็จ — ลองกดรีเฟรช';
+      dot.classList.add('err');
+      txt.textContent = 'offline';
+      if(manual) showToast('ดึงเรทไม่สำเร็จ ลองใหม่อีกครั้ง');
+    })
+    .finally(() => {
+      setTimeout(() => btn.classList.remove('spinning'), 400);
+    });
+}
 
-            // Create a "Market Rate Line" dataset if we have a current rate
-            // (Drawing a flat line across the chart for current status)
-            const currentRateLine = labels.map(() => currentMarketRate);
+// ===== Calculations =====
+function getTxs(portfolioKey){
+  if(portfolioKey === 'all'){
+    return Object.values(state.portfolios).flat();
+  }
+  return state.portfolios[portfolioKey] || [];
+}
 
-            chartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'My Avg Cost',
-                            data: avgData,
-                            borderColor: '#34d399', // Emerald
-                            backgroundColor: '#34d399',
-                            tension: 0.2,
-                            borderWidth: 2,
-                            pointRadius: 0
-                        },
-                        {
-                            label: 'Transaction Rate',
-                            data: execData,
-                            borderColor: '#64748b', // Slate
-                            backgroundColor: '#64748b',
-                            borderDash: [5, 5],
-                            tension: 0.2,
-                            pointRadius: 4,
-                            showLine: false // Just dots
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false },
-                    plugins: { 
-                        legend: { labels: { color: '#94a3b8', font: {size: 10} } },
-                        annotation: {
-                            // If we had the annotation plugin, we'd draw a line. 
-                            // For simplicity, we just rely on the dashboard for Current Rate.
-                        }
-                    },
-                    scales: {
-                        x: { display: false },
-                        y: { 
-                            grid: { color: '#1e293b' },
-                            ticks: { color: '#64748b' } 
-                        }
-                    }
-                }
-            });
-        }
+function getAllTxsSorted(portfolioKey){
+  // include portfolio name for "all" view
+  let list;
+  if(portfolioKey === 'all'){
+    list = [];
+    Object.keys(state.portfolios).forEach(pk => {
+      state.portfolios[pk].forEach(tx => list.push({...tx, _portfolio: pk}));
+    });
+  } else {
+    list = (state.portfolios[portfolioKey] || []).map(tx => ({...tx, _portfolio: portfolioKey}));
+  }
+  return list.sort((a,b) => {
+    if(a.date !== b.date) return b.date.localeCompare(a.date);
+    return (b.id||0) - (a.id||0);
+  });
+}
 
-        // --- FETCH & UTILS ---
-        function saveData() { localStorage.setItem('fx_tx', JSON.stringify(transactions)); }
-        
-        function toggleSettings() { 
-            const m = document.getElementById('modal-settings'); 
-            m.classList.toggle('hidden'); m.classList.toggle('flex'); 
-            document.getElementById('inp-csv-link').value = config.csvUrl; 
-        }
-        
-        function saveSettings() { 
-            config.csvUrl = document.getElementById('inp-csv-link').value.trim(); 
-            localStorage.setItem('fx_config', JSON.stringify(config)); 
-            toggleSettings(); 
-            if(config.csvUrl) fetchRate(); 
-        }
+function computeStats(portfolioKey){
+  const txs = getTxs(portfolioKey);
+  let totalUsd = 0;
+  let totalCostThb = 0;
 
-        async function fetchRate() {
-            if (!config.csvUrl) return alert("Set CSV Link first!");
-            const btn = document.getElementById('btn-refresh'); 
-            btn.classList.add('animate-spin');
-            
-            try {
-                let res;
-                // Auto-Proxy Logic
-                try { res = await fetch(config.csvUrl); if (!res.ok) throw new Error(); } 
-                catch (e) { res = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(config.csvUrl)); }
-                
-                const text = await res.text();
-                // Parse CSV specifically for GoogleFinance CURRENCY format
-                // Usually returns: "Date", "Close" OR just headers and value
-                // We'll look for the number in the 2nd column
-                const rows = text.split(/\r?\n/);
-                // Row 1: Headers, Row 2: Data
-                if(rows.length < 2) throw new Error("Invalid CSV");
-                
-                const dataRow = rows[1].split(',');
-                // Assuming Col B is price
-                const rate = parseFloat(dataRow[1]); 
+  txs.forEach(tx => {
+    const amt = parseFloat(tx.amount) || 0;
+    const rate = parseFloat(tx.rate) || 0;
+    if(tx.type === 'deposit'){
+      totalUsd += amt;
+      totalCostThb += amt * rate;
+    } else {
+      // withdraw: reduce USD held, reduce cost basis proportionally using avg cost at time of withdrawal
+      const avgBefore = totalUsd > 0 ? (totalCostThb / totalUsd) : 0;
+      totalUsd -= amt;
+      totalCostThb -= amt * avgBefore;
+    }
+  });
 
-                if(!isNaN(rate)) {
-                    currentMarketRate = rate;
-                    document.getElementById('market-rate').innerText = rate.toFixed(2);
-                    calculateAndRender(); // Re-calc with new market rate
-                }
+  if(totalUsd < 0) totalUsd = 0;
+  if(totalCostThb < 0) totalCostThb = 0;
 
-            } catch(e) { 
-                console.error(e);
-                alert("Could not fetch rate. Check CSV link."); 
-            } finally { 
-                btn.classList.remove('animate-spin'); 
-            }
-        }
-    </script>
+  const avgCost = totalUsd > 0 ? (totalCostThb / totalUsd) : 0;
+  const currentValueThb = totalUsd * (state.liveRate || 0);
+  const pl = currentValueThb - totalCostThb;
+  const plPct = totalCostThb > 0 ? (pl / totalCostThb * 100) : 0;
+
+  return { totalUsd, totalCostThb, avgCost, currentValueThb, pl, plPct };
+}
+
+// ===== Render =====
+function fmt(n, decimals=2){
+  return n.toLocaleString('en-US', {minimumFractionDigits: decimals, maximumFractionDigits: decimals});
+}
+
+function renderAll(){
+  const stats = computeStats(activeTab);
+  const portfolioName = PORTFOLIOS.find(p => p.key === activeTab).label;
+
+  document.getElementById('totalUsd').textContent = '$' + fmt(stats.totalUsd);
+  document.getElementById('totalCostThb').textContent = 'ต้นทุน ฿' + fmt(stats.totalCostThb);
+
+  if(stats.avgCost > 0){
+    document.getElementById('avgCost').innerHTML = stats.avgCost.toFixed(4) + '<span style="font-size:12px;color:var(--muted);">฿/$</span>';
+  } else {
+    document.getElementById('avgCost').innerHTML = '--.--<span style="font-size:12px;color:var(--muted);">฿/$</span>';
+  }
+
+  if(state.liveRate && stats.avgCost > 0){
+    const diff = state.liveRate - stats.avgCost;
+    const diffPct = (diff / stats.avgCost * 100);
+    const sign = diff >= 0 ? '+' : '';
+    document.getElementById('avgCostSub').textContent = 'vs เรทตลาด: ' + sign + diff.toFixed(4) + ' (' + sign + diffPct.toFixed(2) + '%)';
+  } else {
+    document.getElementById('avgCostSub').textContent = '--';
+  }
+
+  // P/L
+  const plEl = document.getElementById('plValue');
+  const plPctEl = document.getElementById('plPct');
+  const plSubEl = document.getElementById('plSub');
+  const sign = stats.pl >= 0 ? '+' : '';
+  plEl.textContent = sign + '฿' + fmt(Math.abs(stats.pl)) ;
+  plEl.className = 'stat-value ' + (stats.pl >= 0 ? 'green' : 'red');
+  plPctEl.textContent = sign + stats.plPct.toFixed(2) + '%';
+  plPctEl.className = 'pl-pct ' + (stats.pl >= 0 ? 'pos' : 'neg');
+
+  if(stats.totalUsd > 0 && state.liveRate){
+    plSubEl.textContent = 'มูลค่าปัจจุบัน ฿' + fmt(stats.currentValueThb) + ' (' + portfolioName + ')';
+  } else if(stats.totalUsd === 0) {
+    plSubEl.textContent = 'ยังไม่มี USD คงเหลือใน ' + portfolioName;
+  } else {
+    plSubEl.textContent = 'รอข้อมูลเรทตลาด';
+  }
+
+  // form label
+  const formLabel = activeTab === 'all' ? 'เลือกพอร์ตด้านบน' : portfolioName;
+  document.getElementById('formPortfolioLabel').textContent = formLabel;
+  document.getElementById('historyPortfolioLabel').textContent = portfolioName;
+
+  renderHistory();
+}
+
+function renderHistory(){
+  const list = getAllTxsSorted(activeTab);
+  const el = document.getElementById('historyList');
+
+  if(list.length === 0){
+    el.innerHTML = '<div class="empty-state">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>' +
+      'ยังไม่มีรายการ — เริ่มบันทึกด้านบน</div>';
+    return;
+  }
+
+  el.innerHTML = '';
+  list.forEach(tx => {
+    const isDeposit = tx.type === 'deposit';
+    const div = document.createElement('div');
+    div.className = 'history-item';
+
+    const portfolioTag = activeTab === 'all' ? ' · ' + PORTFOLIOS.find(p=>p.key===tx._portfolio).label : '';
+    const noteText = tx.note ? (' · ' + tx.note) : '';
+
+    div.innerHTML =
+      '<div class="history-left">' +
+        '<div class="history-icon ' + (isDeposit ? 'deposit' : 'withdraw') + '">' + (isDeposit ? '↓' : '↑') + '</div>' +
+        '<div class="history-text">' +
+          '<div class="history-amount">' + (isDeposit ? '+' : '−') + '$' + fmt(parseFloat(tx.amount)||0) + '</div>' +
+          '<div class="history-meta">' + tx.date + portfolioTag + noteText + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="history-right">' +
+        '<div class="history-rate"><span class="lbl">rate</span>' + (parseFloat(tx.rate)||0).toFixed(4) + '</div>' +
+        '<div class="del-btn" onclick="askDelete(\'' + tx._portfolio + '\',' + tx.id + ')">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>' +
+        '</div>' +
+      '</div>';
+    el.appendChild(div);
+  });
+}
+
+// ===== Transaction CRUD =====
+function saveTransaction(){
+  if(activeTab === 'all'){
+    showToast('กรุณาเลือกพอร์ต (Dime/Webull/Other) ก่อนบันทึก');
+    return;
+  }
+  const date = document.getElementById('txDate').value;
+  const type = document.getElementById('txType').value;
+  const amount = parseFloat(document.getElementById('txAmount').value);
+  const rate = parseFloat(document.getElementById('txRate').value);
+  const note = document.getElementById('txNote').value.trim();
+
+  if(!date){ showToast('กรุณาเลือกวันที่'); return; }
+  if(!amount || amount <= 0){ showToast('กรุณากรอกจำนวน USD'); return; }
+  if(!rate || rate <= 0){ showToast('กรุณากรอกเรท THB'); return; }
+
+  const tx = { id: Date.now(), date, type, amount, rate, note };
+  state.portfolios[activeTab].push(tx);
+  saveState();
+  renderAll();
+
+  // reset form (keep date and type)
+  document.getElementById('txAmount').value = '';
+  document.getElementById('txRate').value = '';
+  document.getElementById('txNote').value = '';
+  showToast('บันทึกรายการแล้ว ✓');
+}
+
+function askDelete(portfolio, id){
+  pendingDelete = {portfolio, id};
+  const tx = state.portfolios[portfolio].find(t => t.id === id);
+  if(!tx) return;
+  document.getElementById('deletePreview').textContent =
+    (tx.type === 'deposit' ? 'ฝาก' : 'ถอน') + ' $' + fmt(parseFloat(tx.amount)||0) + ' @ ' + tx.rate +
+    ' — ' + tx.date + (tx.note ? ' (' + tx.note + ')' : '') + ' [' + PORTFOLIOS.find(p=>p.key===portfolio).label + ']';
+  document.getElementById('deleteOverlay').classList.add('show');
+}
+function closeDelete(){
+  pendingDelete = null;
+  document.getElementById('deleteOverlay').classList.remove('show');
+}
+function confirmDelete(){
+  if(!pendingDelete) return;
+  const { portfolio, id } = pendingDelete;
+  state.portfolios[portfolio] = state.portfolios[portfolio].filter(t => t.id !== id);
+  saveState();
+  closeDelete();
+  renderAll();
+  showToast('ลบรายการแล้ว');
+}
+
+// ===== Backup (clipboard JSON) =====
+function openBackup(){
+  document.getElementById('exportArea').value = JSON.stringify({portfolios: state.portfolios}, null, 2);
+  document.getElementById('importArea').value = '';
+  document.getElementById('backupOverlay').classList.add('show');
+}
+function closeBackup(){
+  document.getElementById('backupOverlay').classList.remove('show');
+}
+function copyExport(){
+  const ta = document.getElementById('exportArea');
+  ta.select();
+  ta.setSelectionRange(0, 999999);
+  try{
+    navigator.clipboard.writeText(ta.value).then(() => showToast('คัดลอกแล้ว ✓'));
+  }catch(e){
+    document.execCommand('copy');
+    showToast('คัดลอกแล้ว ✓');
+  }
+}
+function importData(){
+  const raw = document.getElementById('importArea').value.trim();
+  if(!raw){ showToast('วาง JSON ก่อน'); return; }
+  try{
+    const parsed = JSON.parse(raw);
+    if(!parsed.portfolios) throw new Error('invalid format');
+    ['dime','webull','other'].forEach(k => {
+      if(!Array.isArray(parsed.portfolios[k])) parsed.portfolios[k] = [];
+    });
+    state.portfolios = parsed.portfolios;
+    saveState();
+    closeBackup();
+    renderAll();
+    showToast('นำเข้าข้อมูลสำเร็จ ✓');
+  }catch(e){
+    showToast('รูปแบบ JSON ไม่ถูกต้อง');
+  }
+}
+
+// ===== Toast =====
+let toastTimer = null;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ===== Init =====
+function init(){
+  loadState();
+  renderTabs();
+  document.getElementById('txDate').value = new Date().toISOString().slice(0,10);
+  renderAll();
+  fetchRate(false);
+}
+init();
+</script>
 </body>
 </html>
