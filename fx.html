@@ -344,32 +344,51 @@ function setTab(key){
 }
 
 // ===== Live Rate (frankfurter.app — free, no key) =====
+function applyRate(rate, dateStr, source){
+  state.liveRate = rate;
+  state.rateTime = dateStr;
+  document.getElementById('liveRate').innerHTML = rate.toFixed(4) + '<span class="unit">฿/$</span>';
+  document.getElementById('rateMeta').textContent = 'ข้อมูลล่าสุด: ' + dateStr + ' (' + source + ')';
+  document.getElementById('statusDot').classList.remove('err');
+  document.getElementById('statusText').textContent = 'live';
+  renderAll();
+}
+
 function fetchRate(manual){
   const btn = document.getElementById('refreshBtn');
   const dot = document.getElementById('statusDot');
   const txt = document.getElementById('statusText');
   btn.classList.add('spinning');
-  fetch('https://api.frankfurter.app/latest?from=USD&to=THB')
+
+  fetch('https://open.er-api.com/v6/latest/USD')
     .then(r => {
-      if(!r.ok) throw new Error('bad response');
+      if(!r.ok) throw new Error('primary bad response');
       return r.json();
     })
     .then(data => {
       const rate = data.rates && data.rates.THB;
-      if(!rate) throw new Error('no rate');
-      state.liveRate = rate;
-      state.rateTime = data.date || new Date().toISOString().slice(0,10);
-      document.getElementById('liveRate').innerHTML = rate.toFixed(4) + '<span class="unit">฿/$</span>';
-      document.getElementById('rateMeta').textContent = 'ข้อมูลล่าสุด: ' + state.rateTime + ' (frankfurter.app)';
-      dot.classList.remove('err');
-      txt.textContent = 'live';
-      renderAll();
+      if(!rate) throw new Error('no rate in primary');
+      const dateStr = data.time_last_update_utc ? data.time_last_update_utc.slice(0,16) : new Date().toISOString().slice(0,10);
+      applyRate(rate, dateStr, 'open.er-api.com');
     })
-    .catch(err => {
-      document.getElementById('rateMeta').textContent = 'โหลดเรทไม่สำเร็จ — ลองกดรีเฟรช';
-      dot.classList.add('err');
-      txt.textContent = 'offline';
-      if(manual) showToast('ดึงเรทไม่สำเร็จ ลองใหม่อีกครั้ง');
+    .catch(() => {
+      fetch('https://api.exchangerate-api.com/v4/latest/USD')
+        .then(r => {
+          if(!r.ok) throw new Error('fallback bad response');
+          return r.json();
+        })
+        .then(data => {
+          const rate = data.rates && data.rates.THB;
+          if(!rate) throw new Error('no rate in fallback');
+          const dateStr = data.date || new Date().toISOString().slice(0,10);
+          applyRate(rate, dateStr, 'exchangerate-api.com');
+        })
+        .catch(() => {
+          document.getElementById('rateMeta').textContent = 'โหลดเรทไม่สำเร็จ — ลองกดรีเฟรช';
+          dot.classList.add('err');
+          txt.textContent = 'offline';
+          if(manual) showToast('ดึงเรทไม่สำเร็จ ลองใหม่อีกครั้ง');
+        });
     })
     .finally(() => {
       setTimeout(() => btn.classList.remove('spinning'), 400);
