@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0a0c0f">
   <title>DCA Tracker</title>
@@ -49,7 +49,6 @@
       padding: 24px 16px 100px;
     }
 
-    /* ── Header ── */
     .header {
       display: flex;
       justify-content: space-between;
@@ -86,7 +85,6 @@
       margin-top: 4px;
     }
 
-    /* ── Tabs ── */
     .tabs {
       display: flex;
       gap: 4px;
@@ -115,7 +113,6 @@
       border: 1px solid var(--border2);
     }
 
-    /* ── Card ── */
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -142,7 +139,6 @@
       background: var(--border);
     }
 
-    /* ── Number Input ── */
     .num-wrap {
       display: flex;
       align-items: center;
@@ -183,7 +179,6 @@
       border-left: 1px solid var(--border2);
     }
 
-    /* ── Master Cash Pool ── */
     .pool-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -216,7 +211,6 @@
       color: var(--accent);
     }
 
-    /* ── Stats Row ── */
     .stats-row {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -232,7 +226,6 @@
     .stat-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 7px; font-weight: 600; }
     .stat-value { font-family: var(--font-display); font-size: 16px; font-weight: 700; }
 
-    /* ── Alloc Bar ── */
     .alloc-bar-wrap { margin-bottom: 16px; }
     .alloc-bar-top {
       display: flex;
@@ -245,7 +238,6 @@
     .alloc-track { height: 4px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
     .alloc-fill { height: 100%; border-radius: 4px; transition: width 0.4s; }
 
-    /* ── Table Header ── */
     .table-header {
       display: flex;
       justify-content: space-between;
@@ -258,7 +250,6 @@
       letter-spacing: 1px;
     }
 
-    /* ── Asset Row ── */
     .asset-row {
       background: var(--surface2);
       border: 1.5px solid var(--border);
@@ -309,7 +300,6 @@
     }
     .btn-del:hover { color: var(--danger); }
 
-    /* ── Overweight Panel ── */
     .over-panel { display: none; }
     .over-panel.open {
       display: block;
@@ -353,7 +343,6 @@
     }
     .over-note span { color: var(--warn); font-weight: 700; }
 
-    /* ── Tranche Panel (expanded) ── */
     .tranche-panel { display: none; }
     .tranche-panel.open {
       display: block;
@@ -383,7 +372,6 @@
     .tranche-mini .tm-pct { font-size: 9px; color: var(--muted); margin-bottom: 6px; }
     .tranche-mini .tm-amt { font-family: var(--font-display); font-size: 14px; font-weight: 700; }
 
-    /* ── Add Asset ── */
     .add-form { display: flex; flex-direction: column; gap: 10px; }
     .add-form-row1 { display: flex; gap: 10px; }
     .add-form-row2 { display: flex; gap: 10px; }
@@ -422,7 +410,6 @@
     }
     .btn-add:hover { opacity: 0.85; }
 
-    /* ── Tranche Tab ── */
     .tranche-settings {
       display: flex;
       gap: 10px;
@@ -490,7 +477,6 @@
 
     .empty-state { text-align: center; color: var(--green); padding: 30px; font-size: 13px; font-weight: 600; }
 
-    /* ── Currency Toggle ── */
     .currency-toggle {
       display: flex;
       background: var(--surface2);
@@ -536,9 +522,9 @@
 <body>
 <div class="app" id="app"></div>
 
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
 <script type="text/babel">
 const { useState, useEffect, useMemo } = React;
 
@@ -596,7 +582,6 @@ function App() {
   const [tab,      setTab]      = useState("tracker");
   const [saved,    setSaved]    = useState(false);
 
-  // Auto-save
   useEffect(() => {
     localStorage.setItem("dca_initial",  JSON.stringify(initial));
     localStorage.setItem("dca_added",    JSON.stringify(added));
@@ -609,12 +594,11 @@ function App() {
     return () => clearTimeout(t);
   }, [initial, added, assets, tranches, currency, rate]);
 
-  // Currency helpers — ทุกอย่างเก็บในบาท แค่แสดงเป็น USD
   const isUSD  = currency === "USD";
   const sym    = isUSD ? "$" : "฿";
-  const disp   = (thb) => isUSD ? thb / rate : thb;          // บาท → แสดง
-  const toThb  = (val) => isUSD ? val * rate : val;            // input → บาท
-  const fmtC   = (thb) => fmt(disp(thb));                    // format พร้อม convert
+  const disp   = (thb) => isUSD ? thb / rate : thb;
+  const toThb  = (val) => isUSD ? val * rate : val;
+  const fmtC   = (thb) => fmt(disp(thb));
 
   const totalCapital   = initial + added;
   const totalAllocated = assets.reduce((s, a) => s + a.targetPct, 0);
@@ -630,7 +614,7 @@ function App() {
   );
 
   const totalBought    = enriched.reduce((s, a) => s + a.bought, 0);
-  const totalRemaining = totalCapital - totalBought;  // หักเงินที่ซื้อเกินออกด้วย
+  const totalRemaining = totalCapital - totalBought;
   const totalOverweight = enriched.reduce((s, a) => s + (a.remaining < 0 ? Math.abs(a.remaining) : 0), 0);
 
   const updateAsset  = (id, field, val) => setAssets(p => p.map(a => a.id === id ? { ...a, [field]: val } : a));
@@ -642,7 +626,6 @@ function App() {
 
   return (
     <div>
-      {/* Header */}
       <div className="header">
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -660,13 +643,11 @@ function App() {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="tabs">
         <button className={`tab ${tab === "tracker" ? "active" : ""}`} onClick={() => setTab("tracker")}>📊 Quota Tracker</button>
         <button className={`tab ${tab === "tranche" ? "active" : ""}`} onClick={() => setTab("tranche")}>🎯 คำนวณไม้ DCA</button>
       </div>
 
-      {/* Master Cash Pool */}
       <div className="card">
         <div className="card-title">💰 Master Cash Pool</div>
         <div className="pool-grid">
@@ -693,7 +674,6 @@ function App() {
         )}
       </div>
 
-      {/* ══ TAB: TRACKER ══ */}
       {tab === "tracker" && <>
         <div className="stats-row">
           <div className="stat-box">
@@ -778,7 +758,6 @@ function App() {
               }} />
             </div>
 
-            {/* Overweight panel */}
             {a.remaining < 0 && (
               <div className={`over-panel ${selected === a.id ? "open" : ""}`} onClick={e => e.stopPropagation()}>
                 <div className="over-title">⚠️ ซื้อเกินโควตา — Rebalance Guide</div>
@@ -802,7 +781,6 @@ function App() {
               </div>
             )}
 
-            {/* Tranche panel — แสดงเฉพาะตอนยังมีกระสุนเหลือ */}
             {a.remaining > 0 && (
             <div className={`tranche-panel ${selected === a.id ? "open" : ""}`} onClick={e => e.stopPropagation()}>
               <div className="tranche-hint">แผนยิงไม้ · โควตาเหลือ {sym}{fmtC(Math.max(a.remaining, 0))}</div>
@@ -840,7 +818,6 @@ function App() {
         </div>
       </>}
 
-      {/* ══ TAB: TRANCHE ══ */}
       {tab === "tranche" && <>
         <div className="card">
           <div className="card-title">⚙️ ตั้งค่าสัดส่วนไม้</div>
