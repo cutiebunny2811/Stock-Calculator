@@ -613,7 +613,7 @@ function App() {
   const isUSD  = currency === "USD";
   const sym    = isUSD ? "$" : "฿";
   const disp   = (thb) => isUSD ? thb / rate : thb;          // บาท → แสดง
-  const toThb  = (val) => isUSD ? val * rate : val;           // input → บาท
+  const toThb  = (val) => isUSD ? val * rate : val;            // input → บาท
   const fmtC   = (thb) => fmt(disp(thb));                    // format พร้อม convert
 
   const totalCapital   = initial + added;
