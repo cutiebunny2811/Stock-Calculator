@@ -10,11 +10,11 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0C0C0E">
     
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@0.263.1/dist/umd/lucide.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -32,10 +32,8 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback, useRef } = React;
 
-        // 🔴 แปะ URL ที่ได้จาก Google Apps Script ตรงนี้ 🔴
         const API_URL = "https://script.google.com/macros/s/AKfycby0HHsN8RL1eZBvBiLNYAUt_aGvTNRC1pwKRu0BoUPltT5lyRpFt2KkstDFEqcP0ug2Cw/exec";
 
-        // 🥐 เพิ่ม "เบเกอรี่" เข้าไปในระบบ
         const CATEGORIES = ["เนื้อสัตว์", "ซีฟู้ด", "ผัก", "นม/ไข่", "เครื่องดื่ม", "เครื่องปรุง", "อาหารสำเร็จ", "เบเกอรี่", "อื่นๆ"];
         const UNITS = ["กก.", "กรัม", "ลิตร", "มล.", "ชิ้น", "กล่อง", "ถุง", "ขวด", "แถว", "แพ็ค"];
         const CAT_ACCENT = { "เนื้อสัตว์": "#D4846A", "ซีฟู้ด": "#6ABED4", "ผัก": "#7EC8A0", "นม/ไข่": "#D4C896", "เครื่องดื่ม": "#89A8D4", "เครื่องปรุง": "#D4A06A", "อาหารสำเร็จ": "#B49AD4", "เบเกอรี่": "#E2B47F", "อื่นๆ": "#7A7A8A" };
@@ -55,9 +53,22 @@
         }
 
         function LucideIcon({ name, size = 16, color = "currentColor" }) {
-            const iconRef = useRef(null);
-            useEffect(() => { if (iconRef.current) lucide.createIcons(); }, [name]);
-            return <i ref={iconRef} data-lucide={name} style={{ width: size, height: size, color: color }}></i>;
+            const ref = useRef(null);
+            useEffect(() => {
+                if (ref.current && window.lucide) {
+                    ref.current.innerHTML = "";
+                    const icon = lucide.createElement(lucide[name.replace(/-([a-z])/g, (_, c) => c.toUpperCase())]);
+                    if (icon) {
+                        icon.setAttribute("width", size);
+                        icon.setAttribute("height", size);
+                        icon.setAttribute("stroke", color);
+                        icon.setAttribute("fill", "none");
+                        icon.setAttribute("stroke-width", "2");
+                        ref.current.appendChild(icon);
+                    }
+                }
+            }, [name, size, color]);
+            return <span ref={ref} style={{ display: "inline-flex", alignItems: "center" }} />;
         }
 
         function App() {
@@ -72,9 +83,7 @@
             const [topUpAmount, setTopUpAmount] = useState("");
             const [editModal, setEditModal] = useState(null);
             const [editForm, setEditForm] = useState({ name: "", note: "", category: "" });
-            
             const [form, setForm] = useState({ name: "", qty: "", unit: "กก.", category: "เนื้อสัตว์", note: "" });
-            
             const [toast, setToast] = useState(null);
             const [lastSync, setLastSync] = useState(null);
 
@@ -202,7 +211,7 @@
                                             </div>
                                             <div className="acts" style={{ display: "flex", gap: 6, opacity: 0.4 }}>
                                                 <button onClick={() => setTopUpModal(item)} style={{ background: `${T.success}15`, color: T.success, padding: "6px 12px", borderRadius: 8, fontWeight: "bold" }}>+</button>
-                                                {!empty && <button onClick={() => setUseModal(item)} style={{ background: T.elevated, color: T.text, padding: "6px 12px", borderRadius: 8, fontSize: 12 }}>ใช้</button>}
+                                                {!empty && <button onClick={() => setUseModal(item)} style={{ background: T.elevated, color: T.muted, padding: "6px 12px", borderRadius: 8, fontSize: 12 }}>ใช้</button>}
                                                 <button onClick={() => { setEditModal(item); setEditForm({ name: item.name, note: item.note || "", category: item.category }); }} style={{ padding: "8px" }}><LucideIcon name="pencil" size={14} color={T.muted} /></button>
                                                 <button onClick={() => handleDelete(item.id, item.name)} style={{ padding: "8px", color: T.dim }}>✕</button>
                                             </div>
@@ -219,16 +228,13 @@
                             <input placeholder="ชื่อของ" style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff", marginBottom: 12 }} onChange={e => setForm({ ...form, name: e.target.value })} />
                             <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
                                 <input placeholder="จำนวน" type="number" style={{ flex: 1, background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff" }} onChange={e => setForm({ ...form, qty: e.target.value })} />
-                                
                                 <select value={form.unit} style={{ flex: 1, background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff" }} onChange={e => setForm({ ...form, unit: e.target.value })}>
                                     {UNITS.map(u => <option key={u}>{u}</option>)}
                                 </select>
                             </div>
-                            
                             <select value={form.category} style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff", marginBottom: 12 }} onChange={e => setForm({ ...form, category: e.target.value })}>
                                 {CATEGORIES.map(c => <option key={c}>{c}</option>)}
                             </select>
-                            
                             <input placeholder="หมายเหตุ" style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff", marginBottom: 20 }} onChange={e => setForm({ ...form, note: e.target.value })} />
                             <button onClick={handleAdd} style={{ width: "100%", background: T.accent, padding: 16, borderRadius: 12, fontWeight: 600, color: "#000" }}>บันทึกรายการ</button>
                         </BottomSheet>
