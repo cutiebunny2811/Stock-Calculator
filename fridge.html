@@ -6,15 +6,15 @@
     <title>สต๊อกตู้เย็น - Clean & Sync</title>
     <link rel="apple-touch-icon" href="https://emojicdn.elk.sh/❄️">
     <link rel="icon" href="https://emojicdn.elk.sh/❄️">
-    
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0C0C0E">
-    
-    <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone@7.22.5/babel.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.22.5/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@0.263.1/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.min.js"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -57,14 +57,25 @@
             useEffect(() => {
                 if (ref.current && window.lucide) {
                     ref.current.innerHTML = "";
-                    const icon = lucide.createElement(lucide[name.replace(/-([a-z])/g, (_, c) => c.toUpperCase())]);
-                    if (icon) {
-                        icon.setAttribute("width", size);
-                        icon.setAttribute("height", size);
-                        icon.setAttribute("stroke", color);
-                        icon.setAttribute("fill", "none");
-                        icon.setAttribute("stroke-width", "2");
-                        ref.current.appendChild(icon);
+                    const key = name.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+                    const iconFn = lucide[key.charAt(0).toUpperCase() + key.slice(1)];
+                    if (iconFn) {
+                        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                        svg.setAttribute("width", size);
+                        svg.setAttribute("height", size);
+                        svg.setAttribute("viewBox", "0 0 24 24");
+                        svg.setAttribute("fill", "none");
+                        svg.setAttribute("stroke", color);
+                        svg.setAttribute("stroke-width", "2");
+                        svg.setAttribute("stroke-linecap", "round");
+                        svg.setAttribute("stroke-linejoin", "round");
+                        const [tag, attrs, children] = iconFn;
+                        (children || []).forEach(([childTag, childAttrs]) => {
+                            const el = document.createElementNS("http://www.w3.org/2000/svg", childTag);
+                            Object.entries(childAttrs || {}).forEach(([k, v]) => el.setAttribute(k, v));
+                            svg.appendChild(el);
+                        });
+                        ref.current.appendChild(svg);
                     }
                 }
             }, [name, size, color]);
