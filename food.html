@@ -6,21 +6,42 @@
     <title>Food Cost - Powered by Supabase</title>
     <link rel="apple-touch-icon" href="https://emojicdn.elk.sh/🍜">
     <link rel="icon" href="https://emojicdn.elk.sh/🍜">
-    
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+    <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
-    <div id="error-log" style="color: #ff6b6b; padding: 20px; font-family: sans-serif; display: none; background: #2a0808; height: 100vh;"></div>
+    <div id="error-log" style="color: #ff6b6b; padding: 20px; font-family: sans-serif; display: none; background: #2a0808; height: 100vh; white-space: pre-wrap; overflow: auto;"></div>
     <div id="root"></div>
 
     <script>
+        function showFatalError(title, detail) {
+            var el = document.getElementById('error-log');
+            el.style.display = 'block';
+            el.innerText = 'แอปสะดุด! บั๊กคือ: ' + title + (detail ? ('\n\n' + detail) : '');
+        }
         window.addEventListener('error', function(e) {
-            document.getElementById('error-log').style.display = 'block';
-            document.getElementById('error-log').innerText = 'แอปสะดุด! บั๊กคือ: ' + e.message;
+            showFatalError(e.message, e.filename ? (e.filename + ':' + e.lineno + ':' + e.colno) : '');
+        });
+        window.addEventListener('unhandledrejection', function(e) {
+            showFatalError('Promise error: ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
+        });
+        // Verify each CDN script actually loaded before Babel tries to run.
+        window.addEventListener('DOMContentLoaded', function() {
+            var missing = [];
+            if (!window.React) missing.push('React');
+            if (!window.ReactDOM) missing.push('ReactDOM');
+            if (!window.Babel) missing.push('Babel');
+            if (!window.supabase) missing.push('Supabase');
+            if (missing.length) {
+                showFatalError(
+                    'โหลดไลบรารีไม่สำเร็จ: ' + missing.join(', '),
+                    'ลองรีเฟรชแรงๆ (Ctrl+Shift+R) หรือเช็คอินเทอร์เน็ต/ตัวบล็อกโฆษณาที่อาจบล็อก unpkg.com'
+                );
+            }
         });
     </script>
 
@@ -31,7 +52,7 @@
 
         const supabaseUrl = 'https://zzynqlqnzdhkffvqvpzt.supabase.co';
         const supabaseKey = 'sb_publishable_x5Li82tQRPoiKP55IrNlvA_mNypDvDz';
-        
+
         if (!window.supabase) {
             throw new Error("โหลด Supabase ไม่สำเร็จ ลองรีเฟรชหรือเช็คอินเทอร์เน็ตครับ");
         }
