@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>FX Tracker — Multi-Broker</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
   :root{
     --bg:#0a0e16;
@@ -47,6 +48,9 @@
   .status-dot{display:flex; align-items:center; gap:5px; font-size:11px; color:var(--muted);}
   .dot{width:6px; height:6px; border-radius:50%; background:var(--green);}
   .dot.err{background:var(--red);}
+  .dot.syncing{background:var(--gold); animation:pulse 1s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:0.3;}}
+  .sync-badge{font-size:10px; color:var(--muted); display:flex; align-items:center; gap:4px; margin-top:2px;}
 
   /* Tabs */
   .tabs{display:flex; gap:6px; margin-bottom:14px; background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:4px;}
@@ -175,6 +179,7 @@
       <div>
         <div class="header-title">FX Tracker</div>
         <div class="header-sub">Multi-Broker USD/THB</div>
+        <div class="sync-badge"><span class="dot" id="syncDot"></span><span id="syncText">กำลังเชื่อมต่อ...</span></div>
       </div>
     </div>
     <div class="icon-btn" onclick="openBackup()" title="Backup">
@@ -258,14 +263,15 @@
 <!-- Backup Modal -->
 <div class="modal-overlay" id="backupOverlay" onclick="if(event.target===this)closeBackup()">
   <div class="modal">
-    <div class="modal-title">Backup ข้อมูล</div>
+    <div class="modal-title">Backup ข้อมูล (สำรองเพิ่มเติม)</div>
+    <div style="font-size:11.5px; color:var(--muted); margin-bottom:14px; line-height:1.5;">ข้อมูลซิงค์กับ Supabase อัตโนมัติอยู่แล้ว ใช้ตรงนี้แค่สำรองเผื่อไว้นอกระบบ</div>
     <span class="field-label">EXPORT — คัดลอกข้อมูลทั้งหมดเก็บไว้</span>
     <textarea id="exportArea" readonly></textarea>
     <div class="modal-actions">
       <button class="btn-confirm" onclick="copyExport()">📋 คัดลอกข้อมูล</button>
     </div>
     <div style="height:16px;"></div>
-    <span class="field-label">IMPORT — วางข้อมูลเพื่อกู้คืน (จะเขียนทับข้อมูลทั้งหมด)</span>
+    <span class="field-label">IMPORT — วางข้อมูลเพื่อกู้คืน (จะเขียนทับข้อมูลทั้งหมดใน Supabase)</span>
     <textarea id="importArea" placeholder="วาง JSON ที่นี่..."></textarea>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeBackup()">ปิด</button>
@@ -289,9 +295,13 @@
 <div class="toast" id="toast"></div>
 
 <script>
+// ===== Supabase Config =====
+const SUPABASE_URL = 'https://zzynqlqnzdhkffvqvpzt.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_x5Li82tQRPoiKP55IrNlvA_mNypDvDz';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 // ===== Data Model =====
-// data = { portfolios: { dime: [tx...], webull: [tx...], other: [tx...] }, rate: number }
-// tx = { id, date, type: 'deposit'|'withdraw', amount, rate, note }
+// Each row in fx_transactions: { id, portfolio, date, type, amount, rate, note, created_at }
 
 const PORTFOLIOS = [
   { key: 'all', label: 'All' },
@@ -309,20 +319,106 @@ let state = {
 let activeTab = 'all';
 let pendingDelete = null; // {portfolio, id}
 
-const STORAGE_KEY = 'fxtracker_data_v1';
+const LOCAL_BACKUP_KEY = 'fxtracker_local_backup_v1';
 
-function loadState(){
+function saveLocalBackup(){
+  try{ localStorage.setItem(LOCAL_BACKUP_KEY, JSON.stringify({portfolios: state.portfolios})); }catch(e){}
+}
+function loadLocalBackup(){
   try{
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(LOCAL_BACKUP_KEY);
     if(raw){
       const parsed = JSON.parse(raw);
-      if(parsed.portfolios) state.portfolios = parsed.portfolios;
+      if(parsed.portfolios) return parsed.portfolios;
     }
   }catch(e){}
+  return null;
 }
-function saveState(){
-  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({portfolios: state.portfolios})); }catch(e){}
+
+function setSyncStatus(mode, text){
+  const dot = document.getElementById('syncDot');
+  const txt = document.getElementById('syncText');
+  dot.className = 'dot' + (mode === 'syncing' ? ' syncing' : mode === 'err' ? ' err' : '');
+  txt.textContent = text;
 }
+
+// ===== Supabase CRUD =====
+async function fetchAllFromSupabase(){
+  setSyncStatus('syncing', 'กำลังโหลดจาก Supabase...');
+  const { data, error } = await sb.from('fx_transactions').select('*').order('date', { ascending: false });
+  if(error){
+    console.error(error);
+    setSyncStatus('err', 'เชื่อม Supabase ไม่สำเร็จ — ใช้ข้อมูลสำรองในเครื่อง');
+    const local = loadLocalBackup();
+    if(local) state.portfolios = local;
+    showToast('ออฟไลน์: ใช้ข้อมูลสำรองในเครื่องชั่วคราว');
+    return;
+  }
+  const grouped = { dime: [], webull: [], other: [] };
+  (data || []).forEach(row => {
+    if(!grouped[row.portfolio]) grouped[row.portfolio] = [];
+    grouped[row.portfolio].push({
+      id: row.id,
+      date: row.date,
+      type: row.type,
+      amount: row.amount,
+      rate: row.rate,
+      note: row.note || ''
+    });
+  });
+  state.portfolios = grouped;
+  saveLocalBackup();
+  setSyncStatus('ok', 'ซิงค์แล้ว · Supabase');
+}
+
+async function insertTransaction(portfolio, tx){
+  setSyncStatus('syncing', 'กำลังบันทึก...');
+  const { data, error } = await sb.from('fx_transactions').insert({
+    portfolio, date: tx.date, type: tx.type, amount: tx.amount, rate: tx.rate, note: tx.note
+  }).select().single();
+  if(error){
+    console.error(error);
+    setSyncStatus('err', 'บันทึกไม่สำเร็จ — ลองใหม่');
+    showToast('บันทึกขึ้น Supabase ไม่สำเร็จ ลองใหม่อีกครั้ง');
+    return null;
+  }
+  setSyncStatus('ok', 'ซิงค์แล้ว · Supabase');
+  return data;
+}
+
+async function deleteTransactionRemote(id){
+  setSyncStatus('syncing', 'กำลังลบ...');
+  const { error } = await sb.from('fx_transactions').delete().eq('id', id);
+  if(error){
+    console.error(error);
+    setSyncStatus('err', 'ลบไม่สำเร็จ — ลองใหม่');
+    showToast('ลบไม่สำเร็จ ลองใหม่อีกครั้ง');
+    return false;
+  }
+  setSyncStatus('ok', 'ซิงค์แล้ว · Supabase');
+  return true;
+}
+
+async function replaceAllInSupabase(newPortfolios){
+  setSyncStatus('syncing', 'กำลังนำเข้าข้อมูล...');
+  // ลบของเดิมทั้งหมดแล้วใส่ใหม่
+  const { error: delErr } = await sb.from('fx_transactions').delete().neq('id', -1);
+  if(delErr){ console.error(delErr); setSyncStatus('err', 'นำเข้าไม่สำเร็จ'); return false; }
+
+  const rows = [];
+  Object.keys(newPortfolios).forEach(pk => {
+    (newPortfolios[pk] || []).forEach(tx => {
+      rows.push({ portfolio: pk, date: tx.date, type: tx.type, amount: tx.amount, rate: tx.rate, note: tx.note || '' });
+    });
+  });
+  if(rows.length > 0){
+    const { error: insErr } = await sb.from('fx_transactions').insert(rows);
+    if(insErr){ console.error(insErr); setSyncStatus('err', 'นำเข้าไม่สำเร็จ'); return false; }
+  }
+  setSyncStatus('ok', 'ซิงค์แล้ว · Supabase');
+  return true;
+}
+
 
 // ===== Init Tabs =====
 function renderTabs(){
@@ -542,7 +638,7 @@ function renderHistory(){
 }
 
 // ===== Transaction CRUD =====
-function saveTransaction(){
+async function saveTransaction(){
   if(activeTab === 'all'){
     showToast('กรุณาเลือกพอร์ต (Dime/Webull/Other) ก่อนบันทึก');
     return;
@@ -557,12 +653,23 @@ function saveTransaction(){
   if(!amount || amount <= 0){ showToast('กรุณากรอกจำนวน USD'); return; }
   if(!rate || rate <= 0){ showToast('กรุณากรอกเรท THB'); return; }
 
-  const tx = { id: Date.now(), date, type, amount, rate, note };
-  state.portfolios[activeTab].push(tx);
-  saveState();
+  const btn = document.querySelector('.save-btn');
+  btn.disabled = true;
+  btn.textContent = 'กำลังบันทึก...';
+
+  const saved = await insertTransaction(activeTab, { date, type, amount, rate, note });
+
+  btn.disabled = false;
+  btn.textContent = 'บันทึกรายการ';
+
+  if(!saved) return;
+
+  state.portfolios[activeTab].push({
+    id: saved.id, date: saved.date, type: saved.type, amount: saved.amount, rate: saved.rate, note: saved.note || ''
+  });
+  saveLocalBackup();
   renderAll();
 
-  // reset form (keep date and type)
   document.getElementById('txAmount').value = '';
   document.getElementById('txRate').value = '';
   document.getElementById('txNote').value = '';
@@ -582,11 +689,15 @@ function closeDelete(){
   pendingDelete = null;
   document.getElementById('deleteOverlay').classList.remove('show');
 }
-function confirmDelete(){
+async function confirmDelete(){
   if(!pendingDelete) return;
   const { portfolio, id } = pendingDelete;
+
+  const ok = await deleteTransactionRemote(id);
+  if(!ok) return;
+
   state.portfolios[portfolio] = state.portfolios[portfolio].filter(t => t.id !== id);
-  saveState();
+  saveLocalBackup();
   closeDelete();
   renderAll();
   showToast('ลบรายการแล้ว');
@@ -612,23 +723,31 @@ function copyExport(){
     showToast('คัดลอกแล้ว ✓');
   }
 }
-function importData(){
+async function importData(){
   const raw = document.getElementById('importArea').value.trim();
   if(!raw){ showToast('วาง JSON ก่อน'); return; }
+  let parsed;
   try{
-    const parsed = JSON.parse(raw);
+    parsed = JSON.parse(raw);
     if(!parsed.portfolios) throw new Error('invalid format');
     ['dime','webull','other'].forEach(k => {
       if(!Array.isArray(parsed.portfolios[k])) parsed.portfolios[k] = [];
     });
-    state.portfolios = parsed.portfolios;
-    saveState();
-    closeBackup();
-    renderAll();
-    showToast('นำเข้าข้อมูลสำเร็จ ✓');
   }catch(e){
     showToast('รูปแบบ JSON ไม่ถูกต้อง');
+    return;
   }
+
+  const ok = await replaceAllInSupabase(parsed.portfolios);
+  if(!ok){
+    showToast('นำเข้าไม่สำเร็จ ลองใหม่อีกครั้ง');
+    return;
+  }
+
+  await fetchAllFromSupabase();
+  closeBackup();
+  renderAll();
+  showToast('นำเข้าข้อมูลสำเร็จ ✓');
 }
 
 // ===== Toast =====
@@ -642,12 +761,13 @@ function showToast(msg){
 }
 
 // ===== Init =====
-function init(){
-  loadState();
+async function init(){
   renderTabs();
   document.getElementById('txDate').value = new Date().toISOString().slice(0,10);
   renderAll();
   fetchRate(false);
+  await fetchAllFromSupabase();
+  renderAll();
 }
 init();
 </script>
