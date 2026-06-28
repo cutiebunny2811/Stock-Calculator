@@ -82,7 +82,6 @@ const ALLOC_ICONS    = ["bank","trending","shield","target","gift","plane","home
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 const DEFAULT_DATA = {
-  totalIncome: 15350,
   rounds: [
     { id: 1, label: "รอบแรก", income: 12350, items: [
       { id: 101, icon: "home",       label: "ค่าบ้าน",         amount: 2200 },
@@ -159,8 +158,7 @@ function App() {
     localStorage.setItem("my_budget_data", JSON.stringify(data));
   }, [data]);
 
-  const [editingIncome, setEditingIncome]   = useState(false);
-  const [tempIncome, setTempIncome]         = useState("");
+  const totalIncome = useMemo(() => data.rounds.reduce((s, r) => s + r.income, 0), [data]);
   const [addingRound, setAddingRound]       = useState(false);
   const [newRoundLabel, setNewRoundLabel]   = useState("");
   const [newRoundIncome, setNewRoundIncome] = useState("");
@@ -175,7 +173,7 @@ function App() {
 
   const totalExpenses  = useMemo(() => data.rounds.reduce((s, r) => s + r.items.reduce((a, i) => a + (i.amount > 0 ? i.amount : 0), 0), 0), [data]);
   const totalAllocated = useMemo(() => data.allocations.reduce((s, a) => s + a.amount, 0), [data]);
-  const remaining = data.totalIncome - totalExpenses;
+  const remaining = totalIncome - totalExpenses;
   const funMoney  = remaining - totalAllocated;
 
   const roundRems = useMemo(() => {
@@ -194,7 +192,6 @@ function App() {
     return [...exp, ...data.allocations.map(a => ({ label: a.label, value: a.amount, color: a.color })), ...(funMoney > 0 ? [{ label: data.funMoneyLabel, value: funMoney, color: "#C8A654" }] : [])];
   }, [data, funMoney]);
 
-  function saveIncome() { const n = parseFloat(tempIncome); if (!isNaN(n)) setData(d => ({ ...d, totalIncome: n })); setEditingIncome(false); }
   function delItem(rid, iid) { setData(d => ({ ...d, rounds: d.rounds.map(r => r.id === rid ? { ...r, items: r.items.filter(i => i.id !== iid) } : r) })); }
   function delRound(rid)     { setData(d => ({ ...d, rounds: d.rounds.filter(r => r.id !== rid) })); }
   function delAlloc(aid)     { setData(d => ({ ...d, allocations: d.allocations.filter(a => a.id !== aid) })); }
@@ -227,24 +224,13 @@ function App() {
           <div style={{ position: "absolute", top: -40, right: -40, width: 160, height: 160, background: "radial-gradient(circle,rgba(212,175,55,.12) 0%,transparent 70%)", borderRadius: "50%", pointerEvents: "none" }} />
           <div style={{ fontSize: 11, color: "#D4AF37", fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 14 }}>สรุปงบประมาณ</div>
 
-          {editingIncome ? (
-            <div style={{ display: "flex", gap: 8, alignItems: "stretch", marginBottom: 16 }}>
-              <input type="number" value={tempIncome} onChange={e => setTempIncome(e.target.value)} autoFocus
-                onKeyDown={e => { if (e.key === "Enter") saveIncome(); if (e.key === "Escape") setEditingIncome(false); }}
-                style={{ ...inp, flex: 1, fontSize: 22, fontWeight: 700, padding: "14px 16px", border: "2px solid #D4AF37", background: "rgba(212,175,55,.08)", color: "#fff" }} />
-              <button onClick={saveIncome}             style={{ ...btn("#5FAE7A","#052e16"), padding: "0 16px", minWidth: 50, minHeight: 52, borderRadius: 10 }}><CategoryIcon iconKey="check" size={20} color="#052e16" /></button>
-              <button onClick={() => setEditingIncome(false)} style={{ ...btn("#374151"), padding: "0 16px", minWidth: 50, minHeight: 52, borderRadius: 10 }}><CategoryIcon iconKey="close" size={20} /></button>
+          <div style={{ background: "rgba(212,175,55,.06)", border: "1px solid rgba(212,175,55,.25)", borderRadius: 14, padding: "16px 20px", width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <div style={{ textAlign: "left" }}>
+              <div style={{ fontSize: 11, color: "#D4AF37", marginBottom: 5 }}>รายรับรวมทั้งเดือน · {data.rounds.length} รอบ</div>
+              <div style={{ fontSize: 32, fontWeight: 700, color: "#fff", lineHeight: 1, letterSpacing: -0.5 }}>{fmt(totalIncome)}<span style={{ fontSize: 16, color: "#E8C97A", marginLeft: 6 }}>฿</span></div>
+              <div style={{ fontSize: 10, color: "#8C7A4A", marginTop: 6 }}>{data.rounds.map(r => `${r.label} +${fmt(r.income)}`).join("  ·  ")}</div>
             </div>
-          ) : (
-            <button onClick={() => { setTempIncome(String(data.totalIncome)); setEditingIncome(true); }}
-              style={{ background: "rgba(212,175,55,.06)", border: "1px solid rgba(212,175,55,.25)", borderRadius: 14, padding: "16px 20px", width: "100%", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <div style={{ textAlign: "left" }}>
-                <div style={{ fontSize: 11, color: "#D4AF37", marginBottom: 5 }}>รายรับรวมทั้งเดือน</div>
-                <div style={{ fontSize: 32, fontWeight: 700, color: "#fff", lineHeight: 1, letterSpacing: -0.5 }}>{fmt(data.totalIncome)}<span style={{ fontSize: 16, color: "#E8C97A", marginLeft: 6 }}>฿</span></div>
-              </div>
-              <CategoryIcon iconKey="edit" size={18} color="#D4AF37" />
-            </button>
-          )}
+          </div>
 
           <div style={{ background: "rgba(212,175,55,.06)", borderRadius: 12, padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
@@ -254,10 +240,10 @@ function App() {
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 11, color: "#C8A654" }}>ใช้ไปแล้ว</div>
               <div style={{ fontSize: 18, fontWeight: 600, color: "#C2A572" }}>{fmt(totalExpenses)} ฿</div>
-              <div style={{ fontSize: 11, color: "#D4AF37", marginTop: 2 }}>{data.totalIncome > 0 ? ((totalExpenses / data.totalIncome) * 100).toFixed(1) : 0}% ของรายรับ</div>
+              <div style={{ fontSize: 11, color: "#D4AF37", marginTop: 2 }}>{totalIncome > 0 ? ((totalExpenses / totalIncome) * 100).toFixed(1) : 0}% ของรายรับ</div>
             </div>
           </div>
-          <div style={{ marginTop: 10 }}><Bar value={totalExpenses} max={data.totalIncome} color="linear-gradient(90deg,#8C7A4A,#D4AF37)" /></div>
+          <div style={{ marginTop: 10 }}><Bar value={totalExpenses} max={totalIncome} color="linear-gradient(90deg,#8C7A4A,#D4AF37)" /></div>
         </div>
 
         {/* Tabs */}
@@ -303,7 +289,7 @@ function App() {
                   <div style={{ marginBottom: 12 }}><Bar value={spent} max={round.income} color="#D4AF37" /></div>
 
                   {round.items.map(item => {
-                    const ipct = data.totalIncome > 0 ? ((Math.abs(item.amount) / data.totalIncome) * 100).toFixed(1) : 0;
+                    const ipct = totalIncome > 0 ? ((Math.abs(item.amount) / totalIncome) * 100).toFixed(1) : 0;
                     const isSpec = item.amount <= 0;
                     return (
                       <div key={item.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1C1C20" }}>
@@ -447,7 +433,7 @@ function App() {
 
         {/* Footer */}
         <div style={{ background: "#121212", borderRadius: 16, padding: 16, marginTop: 4, border: "1px solid #1C1C20", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, textAlign: "center" }}>
-          {[["รายรับรวม", data.totalIncome, "#5FAE7A"],["รายจ่ายรวม", totalExpenses, "#C2645A"],["คงเหลือสุทธิ", funMoney, "#D4AF37"]].map(([label, value, color]) => (
+          {[["รายรับรวม", totalIncome, "#5FAE7A"],["รายจ่ายรวม", totalExpenses, "#C2645A"],["คงเหลือสุทธิ", funMoney, "#D4AF37"]].map(([label, value, color]) => (
             <div key={label}>
               <div style={{ fontSize: 9, color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{label}</div>
               <div style={{ fontSize: 14, fontWeight: 700, color }}>{fmt(value)}</div>
