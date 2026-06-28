@@ -6,7 +6,7 @@
     <title>Budget Tracker</title>
     <link rel="apple-touch-icon" href="https://emojicdn.elk.sh/💵">
     <link rel="icon" href="https://emojicdn.elk.sh/💵">
-    <meta name="theme-color" content="#0f0f1a">
+    <meta name="theme-color" content="#0A0A0C">
     
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -14,7 +14,7 @@
     
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { margin: 0; background: #0f0f1a; }
+        body { margin: 0; background: #0A0A0C; }
     </style>
 </head>
 <body>
@@ -100,8 +100,8 @@ const DEFAULT_DATA = {
     ]},
   ],
   allocations: [
-    { id: "a1", icon: "banknote",   label: "ออม",   amount: 2000, color: "#f59e0b" },
-    { id: "a2", icon: "trending",label: "ลงทุน", amount: 1000, color: "#10b981" },
+    { id: "a1", icon: "banknote",   label: "ออม",   amount: 2000, color: "#D4AF37" },
+    { id: "a2", icon: "trending",label: "ลงทุน", amount: 1000, color: "#8C7A4A" },
   ],
   funMoneyLabel: "Fun Money",
 };
@@ -109,7 +109,7 @@ const DEFAULT_DATA = {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const fmt = n => Math.abs(n).toLocaleString("th-TH");
 
-function Bar({ value, max, color = "#a78bfa" }) {
+function Bar({ value, max, color = "#D4AF37" }) {
   const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
   return (
     <div style={{ width: "100%", height: 4, background: "#2a2a3a", borderRadius: 999, overflow: "hidden" }}>
@@ -135,7 +135,7 @@ function PieChart({ slices, size = 140 }) {
         const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
         return <path key={sl.label} d={`M${cx},${cy} L${x0},${y0} A${r},${r} 0 ${pct > .5 ? 1 : 0},1 ${x1},${y1} Z`} fill={sl.color} opacity={0.9} />;
       })}
-      <circle cx={size/2} cy={size/2} r={size/2 - 22} fill="#1a1a2e" />
+      <circle cx={size/2} cy={size/2} r={size/2 - 22} fill="#17171A" />
     </svg>
   );
 }
@@ -167,7 +167,7 @@ function App() {
   const [addingItem, setAddingItem]         = useState(null);
   const [newItem, setNewItem]               = useState({ icon: "food", label: "", amount: "" });
   const [addingAlloc, setAddingAlloc]       = useState(false);
-  const [newAlloc, setNewAlloc]             = useState({ icon: "banknote", label: "", amount: "", color: "#a78bfa" });
+  const [newAlloc, setNewAlloc]             = useState({ icon: "banknote", label: "", amount: "", color: "#D4AF37" });
   const [activeTab, setActiveTab]           = useState("expenses");
   const [editingRound, setEditingRound]     = useState(null);
   const [editRLabel, setEditRLabel]         = useState("");
@@ -189,9 +189,9 @@ function App() {
   }, [data]);
 
   const pieSlices = useMemo(() => {
-    const pal = ["#f472b6","#fb923c","#facc15","#4ade80","#22d3ee","#818cf8","#e879f9","#f87171","#38bdf8","#a3e635"];
+    const pal = ["#D4AF37","#C8A654","#E8C97A","#8C7A4A","#B8935A","#9A8255","#D9B86C","#7A6B42","#C2A572","#6E5F3A"];
     const exp = data.rounds.flatMap((r, ri) => r.items.filter(i => i.amount > 0).map((it, ii) => ({ label: it.label, value: it.amount, color: pal[(ri*9+ii) % pal.length] })));
-    return [...exp, ...data.allocations.map(a => ({ label: a.label, value: a.amount, color: a.color })), ...(funMoney > 0 ? [{ label: data.funMoneyLabel, value: funMoney, color: "#ec4899" }] : [])];
+    return [...exp, ...data.allocations.map(a => ({ label: a.label, value: a.amount, color: a.color })), ...(funMoney > 0 ? [{ label: data.funMoneyLabel, value: funMoney, color: "#C8A654" }] : [])];
   }, [data, funMoney]);
 
   function saveIncome() { const n = parseFloat(tempIncome); if (!isNaN(n)) setData(d => ({ ...d, totalIncome: n })); setEditingIncome(false); }
@@ -200,17 +200,17 @@ function App() {
   function delAlloc(aid)     { setData(d => ({ ...d, allocations: d.allocations.filter(a => a.id !== aid) })); }
   function doAddRound()  { const n = parseFloat(newRoundIncome); if (!newRoundLabel.trim() || isNaN(n)) return; setData(d => ({ ...d, rounds: [...d.rounds, { id: Date.now(), label: newRoundLabel.trim(), income: n, items: [] }] })); setNewRoundLabel(""); setNewRoundIncome(""); setAddingRound(false); }
   function doAddItem()   { const n = parseFloat(newItem.amount); if (!newItem.label.trim() || isNaN(n)) return; setData(d => ({ ...d, rounds: d.rounds.map(r => r.id === addingItem ? { ...r, items: [...r.items, { id: Date.now(), icon: newItem.icon, label: newItem.label.trim(), amount: n }] } : r) })); setNewItem({ icon: "food", label: "", amount: "" }); setAddingItem(null); }
-  function doAddAlloc()  { const n = parseFloat(newAlloc.amount); if (!newAlloc.label.trim() || isNaN(n)) return; setData(d => ({ ...d, allocations: [...d.allocations, { id: Date.now(), icon: newAlloc.icon, label: newAlloc.label.trim(), amount: n, color: newAlloc.color }] })); setNewAlloc({ icon: "banknote", label: "", amount: "", color: "#a78bfa" }); setAddingAlloc(false); }
+  function doAddAlloc()  { const n = parseFloat(newAlloc.amount); if (!newAlloc.label.trim() || isNaN(n)) return; setData(d => ({ ...d, allocations: [...d.allocations, { id: Date.now(), icon: newAlloc.icon, label: newAlloc.label.trim(), amount: n, color: newAlloc.color }] })); setNewAlloc({ icon: "banknote", label: "", amount: "", color: "#D4AF37" }); setAddingAlloc(false); }
   function doEditRound(rid) { const n = parseFloat(editRIncome); if (!editRLabel.trim() || isNaN(n)) return; setData(d => ({ ...d, rounds: d.rounds.map(r => r.id === rid ? { ...r, label: editRLabel.trim(), income: n } : r) })); setEditingRound(null); }
 
-  const inp = { background: "#1e1e30", border: "1px solid #3a3a5c", borderRadius: 10, color: "#e2e8f0", padding: "10px 14px", fontSize: 14, outline: "none", width: "100%", boxSizing: "border-box", fontFamily: "inherit" };
-  const btn = (bg = "#7c3aed", col = "#fff") => ({ background: bg, border: "none", borderRadius: 10, color: col, padding: "10px 18px", fontSize: 13, cursor: "pointer", fontWeight: 600, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 });
-  const card = { background: "#141422", borderRadius: 16, padding: "18px 16px", marginBottom: 12, border: "1px solid #1e1e35" };
+  const inp = { background: "#1A1A1E", border: "1px solid #3A3528", borderRadius: 10, color: "#e2e8f0", padding: "10px 14px", fontSize: 14, outline: "none", width: "100%", boxSizing: "border-box", fontFamily: "inherit" };
+  const btn = (bg = "#C8A654", col = "#fff") => ({ background: bg, border: "none", borderRadius: 10, color: col, padding: "10px 18px", fontSize: 13, cursor: "pointer", fontWeight: 600, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 });
+  const card = { background: "#121212", borderRadius: 16, padding: "18px 16px", marginBottom: 12, border: "1px solid rgba(212,175,55,.12)" };
 
   const IconPicker = ({ icons, selected, onSelect }) => (
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
       {icons.map(k => (
-        <button key={k} onClick={() => onSelect(k)} style={{ width: 34, height: 34, borderRadius: 8, border: "none", cursor: "pointer", background: selected === k ? "#7c3aed" : "#1e1e35", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <button key={k} onClick={() => onSelect(k)} style={{ width: 34, height: 34, borderRadius: 8, border: "none", cursor: "pointer", background: selected === k ? "#C8A654" : "#1C1C20", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <CategoryIcon iconKey={k} size={14} color={selected === k ? "#fff" : "#6b7280"} />
         </button>
       ))}
@@ -218,52 +218,52 @@ function App() {
   );
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0f0f1a", fontFamily: "'Sarabun','Noto Sans Thai',sans-serif", color: "#e2e8f0", display: "flex", justifyContent: "center", padding: "24px 12px" }}>
+    <div style={{ minHeight: "100vh", background: "#0A0A0C", fontFamily: "'Sarabun','Noto Sans Thai',sans-serif", color: "#e2e8f0", display: "flex", justifyContent: "center", padding: "24px 12px" }}>
       <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       <div style={{ width: "100%", maxWidth: 420 }}>
 
         {/* Header */}
-        <div style={{ background: "linear-gradient(135deg,#1e0a4a 0%,#2d0e6b 60%,#4a1a8a 100%)", borderRadius: 20, padding: "24px 20px", marginBottom: 16, boxShadow: "0 8px 32px rgba(124,58,237,.25)", position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", top: -40, right: -40, width: 160, height: 160, background: "radial-gradient(circle,rgba(167,139,250,.15) 0%,transparent 70%)", borderRadius: "50%", pointerEvents: "none" }} />
-          <div style={{ fontSize: 11, color: "#a78bfa", fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 14 }}>สรุปงบประมาณ</div>
+        <div style={{ background: "linear-gradient(135deg,#0A0A0C 0%,#1A1610 55%,#2A2218 100%)", borderRadius: 20, padding: "24px 20px", marginBottom: 16, boxShadow: "0 8px 32px rgba(212,175,55,.18)", border: "1px solid rgba(212,175,55,.2)", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: -40, right: -40, width: 160, height: 160, background: "radial-gradient(circle,rgba(212,175,55,.12) 0%,transparent 70%)", borderRadius: "50%", pointerEvents: "none" }} />
+          <div style={{ fontSize: 11, color: "#D4AF37", fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 14 }}>สรุปงบประมาณ</div>
 
           {editingIncome ? (
             <div style={{ display: "flex", gap: 8, alignItems: "stretch", marginBottom: 16 }}>
               <input type="number" value={tempIncome} onChange={e => setTempIncome(e.target.value)} autoFocus
                 onKeyDown={e => { if (e.key === "Enter") saveIncome(); if (e.key === "Escape") setEditingIncome(false); }}
-                style={{ ...inp, flex: 1, fontSize: 22, fontWeight: 700, padding: "14px 16px", border: "2px solid #a78bfa", background: "rgba(255,255,255,.1)", color: "#fff" }} />
-              <button onClick={saveIncome}             style={{ ...btn("#4ade80","#052e16"), padding: "0 16px", minWidth: 50, minHeight: 52, borderRadius: 10 }}><CategoryIcon iconKey="check" size={20} color="#052e16" /></button>
+                style={{ ...inp, flex: 1, fontSize: 22, fontWeight: 700, padding: "14px 16px", border: "2px solid #D4AF37", background: "rgba(212,175,55,.08)", color: "#fff" }} />
+              <button onClick={saveIncome}             style={{ ...btn("#5FAE7A","#052e16"), padding: "0 16px", minWidth: 50, minHeight: 52, borderRadius: 10 }}><CategoryIcon iconKey="check" size={20} color="#052e16" /></button>
               <button onClick={() => setEditingIncome(false)} style={{ ...btn("#374151"), padding: "0 16px", minWidth: 50, minHeight: 52, borderRadius: 10 }}><CategoryIcon iconKey="close" size={20} /></button>
             </div>
           ) : (
             <button onClick={() => { setTempIncome(String(data.totalIncome)); setEditingIncome(true); }}
-              style={{ background: "rgba(255,255,255,.08)", border: "1px solid rgba(167,139,250,.3)", borderRadius: 14, padding: "16px 20px", width: "100%", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              style={{ background: "rgba(212,175,55,.06)", border: "1px solid rgba(212,175,55,.25)", borderRadius: 14, padding: "16px 20px", width: "100%", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div style={{ textAlign: "left" }}>
-                <div style={{ fontSize: 11, color: "#a78bfa", marginBottom: 5 }}>รายรับรวมทั้งเดือน</div>
-                <div style={{ fontSize: 32, fontWeight: 700, color: "#fff", lineHeight: 1, letterSpacing: -0.5 }}>{fmt(data.totalIncome)}<span style={{ fontSize: 16, color: "#d8b4fe", marginLeft: 6 }}>฿</span></div>
+                <div style={{ fontSize: 11, color: "#D4AF37", marginBottom: 5 }}>รายรับรวมทั้งเดือน</div>
+                <div style={{ fontSize: 32, fontWeight: 700, color: "#fff", lineHeight: 1, letterSpacing: -0.5 }}>{fmt(data.totalIncome)}<span style={{ fontSize: 16, color: "#E8C97A", marginLeft: 6 }}>฿</span></div>
               </div>
-              <CategoryIcon iconKey="edit" size={18} color="#a78bfa" />
+              <CategoryIcon iconKey="edit" size={18} color="#D4AF37" />
             </button>
           )}
 
-          <div style={{ background: "rgba(255,255,255,.08)", borderRadius: 12, padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ background: "rgba(212,175,55,.06)", borderRadius: 12, padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <div style={{ fontSize: 11, color: "#c4b5fd" }}>หลังหักค่าใช้จ่ายเหลือ</div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: remaining >= 0 ? "#4ade80" : "#f87171", marginTop: 2 }}>{remaining >= 0 ? "" : "−"}{fmt(remaining)} ฿</div>
+              <div style={{ fontSize: 11, color: "#C8A654" }}>หลังหักค่าใช้จ่ายเหลือ</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: remaining >= 0 ? "#5FAE7A" : "#C2645A", marginTop: 2 }}>{remaining >= 0 ? "" : "−"}{fmt(remaining)} ฿</div>
             </div>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 11, color: "#c4b5fd" }}>ใช้ไปแล้ว</div>
-              <div style={{ fontSize: 18, fontWeight: 600, color: "#fb923c" }}>{fmt(totalExpenses)} ฿</div>
-              <div style={{ fontSize: 11, color: "#a78bfa", marginTop: 2 }}>{data.totalIncome > 0 ? ((totalExpenses / data.totalIncome) * 100).toFixed(1) : 0}% ของรายรับ</div>
+              <div style={{ fontSize: 11, color: "#C8A654" }}>ใช้ไปแล้ว</div>
+              <div style={{ fontSize: 18, fontWeight: 600, color: "#C2A572" }}>{fmt(totalExpenses)} ฿</div>
+              <div style={{ fontSize: 11, color: "#D4AF37", marginTop: 2 }}>{data.totalIncome > 0 ? ((totalExpenses / data.totalIncome) * 100).toFixed(1) : 0}% ของรายรับ</div>
             </div>
           </div>
-          <div style={{ marginTop: 10 }}><Bar value={totalExpenses} max={data.totalIncome} color="linear-gradient(90deg,#f472b6,#fb923c)" /></div>
+          <div style={{ marginTop: 10 }}><Bar value={totalExpenses} max={data.totalIncome} color="linear-gradient(90deg,#8C7A4A,#D4AF37)" /></div>
         </div>
 
         {/* Tabs */}
-        <div style={{ display: "flex", background: "#1a1a2e", borderRadius: 12, padding: 4, marginBottom: 16, gap: 4 }}>
+        <div style={{ display: "flex", background: "#17171A", borderRadius: 12, padding: 4, marginBottom: 16, gap: 4 }}>
           {[["expenses","list","รายจ่าย"],["chart","piechart","สัดส่วน"]].map(([tab, icon, label]) => (
-            <button key={tab} onClick={() => setActiveTab(tab)} style={{ flex: 1, padding: "10px 0", borderRadius: 9, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13, background: activeTab === tab ? "#7c3aed" : "transparent", color: activeTab === tab ? "#fff" : "#6b7280", transition: "all .2s", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <button key={tab} onClick={() => setActiveTab(tab)} style={{ flex: 1, padding: "10px 0", borderRadius: 9, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13, background: activeTab === tab ? "#C8A654" : "transparent", color: activeTab === tab ? "#fff" : "#6b7280", transition: "all .2s", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
               <CategoryIcon iconKey={icon} size={14} color={activeTab === tab ? "#fff" : "#6b7280"} />{label}
             </button>
           ))}
@@ -286,30 +286,30 @@ function App() {
                   ) : (
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg,#7c3aed,#a855f7)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#fff" }}>{ri + 1}</div>
+                        <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg,#C8A654,#D4AF37)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#fff" }}>{ri + 1}</div>
                         <div>
                           <div style={{ fontWeight: 600, fontSize: 14 }}>{round.label}</div>
-                          <div style={{ fontSize: 11, color: "#22c55e", marginTop: 1 }}>+{fmt(round.income)} ฿</div>
+                          <div style={{ fontSize: 11, color: "#5FAE7A", marginTop: 1 }}>+{fmt(round.income)} ฿</div>
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
                         <span style={{ fontSize: 11, color: "#6b7280", marginRight: 4 }}>{pct}% ใช้ไป</span>
-                        <IBtn onClick={() => { setEditingRound(round.id); setEditRLabel(round.label); setEditRIncome(String(round.income)); }} iconKey="edit" bg="#1e1e35" color="#a78bfa" />
-                        {data.rounds.length > 1 && <IBtn onClick={() => delRound(round.id)} iconKey="trash" bg="#2a1010" color="#f87171" />}
+                        <IBtn onClick={() => { setEditingRound(round.id); setEditRLabel(round.label); setEditRIncome(String(round.income)); }} iconKey="edit" bg="#1C1C20" color="#D4AF37" />
+                        {data.rounds.length > 1 && <IBtn onClick={() => delRound(round.id)} iconKey="trash" bg="#2a1010" color="#C2645A" />}
                       </div>
                     </div>
                   )}
 
-                  <div style={{ marginBottom: 12 }}><Bar value={spent} max={round.income} color="#a78bfa" /></div>
+                  <div style={{ marginBottom: 12 }}><Bar value={spent} max={round.income} color="#D4AF37" /></div>
 
                   {round.items.map(item => {
                     const ipct = data.totalIncome > 0 ? ((Math.abs(item.amount) / data.totalIncome) * 100).toFixed(1) : 0;
                     const isSpec = item.amount <= 0;
                     return (
-                      <div key={item.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1e1e35" }}>
+                      <div key={item.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1C1C20" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
-                          <div style={{ width: 30, height: 30, borderRadius: 8, background: "#1e1e35", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                            <CategoryIcon iconKey={item.icon} size={14} color="#a78bfa" />
+                          <div style={{ width: 30, height: 30, borderRadius: 8, background: "#1C1C20", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <CategoryIcon iconKey={item.icon} size={14} color="#D4AF37" />
                           </div>
                           <div style={{ minWidth: 0 }}>
                             <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.label}</div>
@@ -317,7 +317,7 @@ function App() {
                           </div>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: isSpec ? "#6b7280" : "#f87171", minWidth: 72, textAlign: "right" }}>{isSpec ? "" : "−"}{fmt(item.amount)} ฿</span>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: isSpec ? "#6b7280" : "#C2645A", minWidth: 72, textAlign: "right" }}>{isSpec ? "" : "−"}{fmt(item.amount)} ฿</span>
                           <IBtn onClick={() => delItem(round.id, item.id)} iconKey="close" color="#4b5563" size={28} />
                         </div>
                       </div>
@@ -325,8 +325,8 @@ function App() {
                   })}
 
                   {addingItem === round.id ? (
-                    <div style={{ marginTop: 12, background: "#1a1a2e", borderRadius: 12, padding: 14 }}>
-                      <div style={{ fontSize: 12, color: "#a78bfa", marginBottom: 10, fontWeight: 600 }}>เพิ่มรายการ</div>
+                    <div style={{ marginTop: 12, background: "#17171A", borderRadius: 12, padding: 14 }}>
+                      <div style={{ fontSize: 12, color: "#D4AF37", marginBottom: 10, fontWeight: 600 }}>เพิ่มรายการ</div>
                       <IconPicker icons={CATEGORY_ICONS} selected={newItem.icon} onSelect={k => setNewItem(x => ({ ...x, icon: k }))} />
                       <input value={newItem.label} onChange={e => setNewItem(x => ({ ...x, label: e.target.value }))} style={{ ...inp, marginBottom: 8 }} placeholder="ชื่อรายการ" />
                       <input value={newItem.amount} onChange={e => setNewItem(x => ({ ...x, amount: e.target.value }))} type="number" style={{ ...inp, marginBottom: 10 }} placeholder="จำนวนเงิน (บาท)" />
@@ -336,14 +336,14 @@ function App() {
                       </div>
                     </div>
                   ) : (
-                    <button onClick={() => setAddingItem(round.id)} style={{ marginTop: 12, background: "transparent", border: "1px dashed #3a3a5c", borderRadius: 10, color: "#6b7280", padding: "10px 0", width: "100%", cursor: "pointer", fontSize: 13, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                    <button onClick={() => setAddingItem(round.id)} style={{ marginTop: 12, background: "transparent", border: "1px dashed #3A3528", borderRadius: 10, color: "#6b7280", padding: "10px 0", width: "100%", cursor: "pointer", fontSize: 13, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                       <CategoryIcon iconKey="plus" size={14} color="#6b7280" />เพิ่มรายการ
                     </button>
                   )}
 
-                  <div style={{ marginTop: 12, background: "#1a1a2e", borderRadius: 10, padding: "10px 14px", display: "flex", justifyContent: "space-between" }}>
+                  <div style={{ marginTop: 12, background: "#17171A", borderRadius: 10, padding: "10px 14px", display: "flex", justifyContent: "space-between" }}>
                     <span style={{ fontSize: 12, color: "#6b7280" }}>{ri < data.rounds.length - 1 ? "คงเหลือยกยอดรอบถัดไป" : "คงเหลือรอบนี้"}</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: roundRems[ri] >= 0 ? "#4ade80" : "#f87171" }}>{fmt(roundRems[ri])} ฿</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: roundRems[ri] >= 0 ? "#5FAE7A" : "#C2645A" }}>{fmt(roundRems[ri])} ฿</span>
                   </div>
                 </div>
               );
@@ -351,7 +351,7 @@ function App() {
 
             {addingRound ? (
               <div style={card}>
-                <div style={{ fontSize: 12, color: "#a78bfa", marginBottom: 10, fontWeight: 600 }}>เพิ่มรอบรายรับ</div>
+                <div style={{ fontSize: 12, color: "#D4AF37", marginBottom: 10, fontWeight: 600 }}>เพิ่มรอบรายรับ</div>
                 <input value={newRoundLabel} onChange={e => setNewRoundLabel(e.target.value)} style={{ ...inp, marginBottom: 8 }} placeholder="ชื่อรอบ เช่น รอบสาม" />
                 <input value={newRoundIncome} onChange={e => setNewRoundIncome(e.target.value)} type="number" style={{ ...inp, marginBottom: 10 }} placeholder="รายรับ (บาท)" />
                 <div style={{ display: "flex", gap: 8 }}>
@@ -360,8 +360,8 @@ function App() {
                 </div>
               </div>
             ) : (
-              <button onClick={() => setAddingRound(true)} style={{ background: "transparent", border: "1px dashed #3a3a5c", borderRadius: 12, color: "#7c3aed", padding: "12px 0", width: "100%", cursor: "pointer", fontSize: 13, fontWeight: 600, marginBottom: 16, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                <CategoryIcon iconKey="plus" size={14} color="#7c3aed" />เพิ่มรอบรายรับ
+              <button onClick={() => setAddingRound(true)} style={{ background: "transparent", border: "1px dashed #3A3528", borderRadius: 12, color: "#C8A654", padding: "12px 0", width: "100%", cursor: "pointer", fontSize: 13, fontWeight: 600, marginBottom: 16, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <CategoryIcon iconKey="plus" size={14} color="#C8A654" />เพิ่มรอบรายรับ
               </button>
             )}
 
@@ -372,7 +372,7 @@ function App() {
               {data.allocations.map(al => {
                 const pct = remaining > 0 ? ((al.amount / remaining) * 100).toFixed(1) : 0;
                 return (
-                  <div key={al.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#1a1a2e", borderRadius: 10, padding: "12px 14px", marginBottom: 8 }}>
+                  <div key={al.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#17171A", borderRadius: 10, padding: "12px 14px", marginBottom: 8 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <div style={{ width: 34, height: 34, borderRadius: 10, background: `${al.color}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <CategoryIcon iconKey={al.icon} size={16} color={al.color} />
@@ -391,7 +391,7 @@ function App() {
               })}
 
               {addingAlloc ? (
-                <div style={{ background: "#1a1a2e", borderRadius: 12, padding: 14, marginBottom: 10 }}>
+                <div style={{ background: "#17171A", borderRadius: 12, padding: 14, marginBottom: 10 }}>
                   <IconPicker icons={ALLOC_ICONS} selected={newAlloc.icon} onSelect={k => setNewAlloc(x => ({ ...x, icon: k }))} />
                   <input value={newAlloc.label} onChange={e => setNewAlloc(x => ({ ...x, label: e.target.value }))} style={{ ...inp, marginBottom: 8 }} placeholder="ชื่อ เช่น ออม / ลงทุน" />
                   <input value={newAlloc.amount} onChange={e => setNewAlloc(x => ({ ...x, amount: e.target.value }))} type="number" style={{ ...inp, marginBottom: 8 }} placeholder="จำนวนเงิน (บาท)" />
@@ -401,21 +401,21 @@ function App() {
                   </div>
                 </div>
               ) : (
-                <button onClick={() => setAddingAlloc(true)} style={{ background: "transparent", border: "1px dashed #3a3a5c", borderRadius: 10, color: "#6b7280", padding: "10px 0", width: "100%", cursor: "pointer", fontSize: 13, marginBottom: 10, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <button onClick={() => setAddingAlloc(true)} style={{ background: "transparent", border: "1px dashed #3A3528", borderRadius: 10, color: "#6b7280", padding: "10px 0", width: "100%", cursor: "pointer", fontSize: 13, marginBottom: 10, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                   <CategoryIcon iconKey="plus" size={14} color="#6b7280" />เพิ่มหมวดจัดสรร
                 </button>
               )}
 
               {/* Fun Money */}
-              <div style={{ background: "linear-gradient(135deg,#831843,#be185d)", borderRadius: 12, padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 4px 16px rgba(190,24,93,.3)" }}>
+              <div style={{ background: "linear-gradient(135deg,#3A2D0F,#5C4419)", borderRadius: 12, padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 4px 16px rgba(212,175,55,.2)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(212,175,55,.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <CategoryIcon iconKey="party" size={16} color="#fff" />
                   </div>
                   <div>
                     <input value={data.funMoneyLabel} onChange={e => setData(d => ({ ...d, funMoneyLabel: e.target.value }))}
-                      style={{ background: "transparent", border: "none", color: "#fbcfe8", fontSize: 12, fontWeight: 600, outline: "none", width: 110, fontFamily: "inherit" }} />
-                    <div style={{ fontSize: 10, color: "#f9a8d4" }}>{remaining > 0 ? ((funMoney / remaining) * 100).toFixed(1) : 0}% ของที่เหลือ</div>
+                      style={{ background: "transparent", border: "none", color: "#E8C97A", fontSize: 12, fontWeight: 600, outline: "none", width: 110, fontFamily: "inherit" }} />
+                    <div style={{ fontSize: 10, color: "#C8A654" }}>{remaining > 0 ? ((funMoney / remaining) * 100).toFixed(1) : 0}% ของที่เหลือ</div>
                   </div>
                 </div>
                 <div style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>{funMoney >= 0 ? "" : "−"}{fmt(funMoney)} ฿</div>
@@ -446,8 +446,8 @@ function App() {
         )}
 
         {/* Footer */}
-        <div style={{ background: "#141422", borderRadius: 16, padding: 16, marginTop: 4, border: "1px solid #1e1e35", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, textAlign: "center" }}>
-          {[["รายรับรวม", data.totalIncome, "#4ade80"],["รายจ่ายรวม", totalExpenses, "#f87171"],["คงเหลือสุทธิ", funMoney, "#a78bfa"]].map(([label, value, color]) => (
+        <div style={{ background: "#121212", borderRadius: 16, padding: 16, marginTop: 4, border: "1px solid #1C1C20", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, textAlign: "center" }}>
+          {[["รายรับรวม", data.totalIncome, "#5FAE7A"],["รายจ่ายรวม", totalExpenses, "#C2645A"],["คงเหลือสุทธิ", funMoney, "#D4AF37"]].map(([label, value, color]) => (
             <div key={label}>
               <div style={{ fontSize: 9, color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{label}</div>
               <div style={{ fontSize: 14, fontWeight: 700, color }}>{fmt(value)}</div>
